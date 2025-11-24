@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: lifeos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - api-gateway
+
+   api-gateway:
+     build:
+       context: ./backend/services/api-gateway
+     ports:
+       - "3001:3001"
+     environment:
+       - NODE_ENV=production
+     depends_on:
+       - auth-service
+       - health-service
+       - finance-service
+       - learning-service
+       - notification-service
+
+  auth-service:
+    build:
+      context: ./backend/services/auth-service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+      - REDIS_HOST=redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  health-service:
+    build:
+      context: ./backend/services/health-service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+   finance-service:
+     build:
+       context: ./backend/services/finance-service
+     environment:
+       - DB_HOST=postgres
+       - DB_PORT=5432
+       - DB_USERNAME=postgres
+       - DB_PASSWORD=password
+       - DB_NAME=lifeos
+       - JWT_SECRET=your-secret-key
+     depends_on:
+       postgres:
+         condition: service_healthy
+
+   learning-service:
+     build:
+       context: ./backend/services/learning-service
+     environment:
+       - DB_HOST=postgres
+       - DB_PORT=5432
+       - DB_USERNAME=postgres
+       - DB_PASSWORD=password
+       - DB_NAME=lifeos
+       - JWT_SECRET=your-secret-key
+     depends_on:
+       postgres:
+         condition: service_healthy
+
+   notification-service:
+     build:
+       context: ./backend/services/notification-service
+     ports:
+       - "3005:3005"
+     environment:
+       - DB_HOST=postgres
+       - DB_PORT=5432
+       - DB_USERNAME=postgres
+       - DB_PASSWORD=password
+       - DB_NAME=lifeos
+       - JWT_SECRET=your-secret-key
+       - SMTP_HOST=smtp.gmail.com
+       - SMTP_PORT=587
+       - SMTP_USER=your-email@gmail.com
+       - SMTP_PASS=your-app-password
+     depends_on:
+       postgres:
+         condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -1,0 +1,108 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install frontend dependencies
+      run: cd frontend && npm ci
+
+    - name: Run frontend linting
+      run: cd frontend && npm run lint
+
+    - name: Run frontend tests
+      run: cd frontend && npm run test:coverage
+
+    - name: Install backend dependencies
+      run: |
+        cd backend/services/auth-service && npm ci
+        cd ../health-service && npm ci
+        cd ../finance-service && npm ci
+        cd ../learning-service && npm ci
+        cd ../notification-service && npm ci
+        cd ../api-gateway && npm ci
+
+    - name: Run backend tests
+      run: |
+        cd backend/services/auth-service && npm run test
+        cd ../health-service && npm run test
+        cd ../finance-service && npm run test
+        cd ../learning-service && npm run test
+        cd ../notification-service && npm run test
+        cd ../api-gateway && npm run test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Build frontend
+      run: cd frontend && npm run build
+
+    - name: Build backend services
+      run: |
+        cd backend/services/auth-service && npm run build
+        cd ../health-service && npm run build
+        cd ../finance-service && npm run build
+        cd ../learning-service && npm run build
+        cd ../notification-service && npm run build
+        cd ../api-gateway && npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          frontend/.next/
+          backend/services/*/dist/
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+    - name: Deploy to staging
+      run: echo "Deploying to staging environment"
+
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Deploy to production
+      run: echo "Deploying to production environment"

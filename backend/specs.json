@@ -1,0 +1,436 @@
+{
+  "name": "LifeOS Backend",
+  "version": "1.0.0",
+  "description": "Comprehensive microservices-based backend for LifeOS platform",
+  "architecture": {
+    "type": "Microservices",
+    "services": [
+      {
+        "name": "API Gateway",
+        "port": 3000,
+        "purpose": "Central entry point, routing, authentication, rate limiting",
+        "technologies": ["NestJS", "JWT", "Redis", "Circuit Breaker"]
+      },
+      {
+        "name": "Auth Service",
+        "port": 3001,
+        "purpose": "User authentication, Google OAuth, profile management",
+        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "JWT", "Google APIs"],
+        "features": [
+          "User registration and login",
+          "JWT token management",
+          "Google OAuth integration",
+          "Google Calendar API integration",
+          "User profile and avatar management",
+          "Background job processing"
+        ]
+      },
+      {
+        "name": "Health Service",
+        "port": 3002,
+        "purpose": "Fitness tracking and health data management",
+        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "Fitbit API"],
+        "features": [
+          "Fitbit OAuth integration",
+          "Health data synchronization",
+          "Vital signs tracking (heart rate, sleep, steps)",
+          "Health analytics and insights",
+          "Real-time data aggregation"
+        ]
+      },
+      {
+        "name": "Finance Service",
+        "port": 3003,
+        "purpose": "Financial data and banking integration",
+        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "Plaid API"],
+        "features": [
+          "Plaid Link integration",
+          "Bank account connection",
+          "Transaction synchronization",
+          "Financial analytics",
+          "Secure data handling"
+        ]
+      },
+      {
+        "name": "Learning Service",
+        "port": 3004,
+        "purpose": "Educational content and progress tracking",
+        "technologies": ["NestJS", "TypeORM", "PostgreSQL"],
+        "features": [
+          "Course content management",
+          "Learning progress tracking",
+          "Achievement system",
+          "Personalized learning paths",
+          "Progress analytics"
+        ]
+      },
+      {
+        "name": "Notification Service",
+        "port": 3005,
+        "purpose": "Multi-channel notification delivery",
+        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "WebSocket", "Bull"],
+        "features": [
+          "In-app notifications",
+          "Email notifications",
+          "SMS notifications",
+          "Push notifications",
+          "Real-time WebSocket delivery",
+          "Notification preferences"
+        ]
+      }
+    ],
+    "shared": {
+      "database": "PostgreSQL with TypeORM",
+      "cache": "Redis",
+      "message_queue": "Bull (Redis-based)",
+      "logging": "Winston structured logging",
+      "containerization": "Docker",
+      "orchestration": "Kubernetes"
+    }
+  },
+  "api_endpoints": {
+    "auth_service": {
+      "POST /auth/register": "User registration",
+      "POST /auth/login": "User authentication",
+      "GET /auth/google": "Google OAuth initiation",
+      "GET /auth/google/callback": "OAuth callback handling",
+      "GET /auth/dashboard": "User dashboard data",
+      "GET /auth/google/calendar/auth": "Calendar authorization",
+      "GET /auth/google/calendar/events": "Calendar events retrieval",
+      "POST /auth/google/calendar/events": "Create calendar event",
+      "POST /auth/upload/avatar": "Upload user avatar",
+      "DELETE /auth/upload/avatar": "Delete user avatar"
+    },
+    "health_service": {
+      "GET /health/dashboard": "Health dashboard data",
+      "GET /health/fitbit/auth": "Fitbit OAuth initiation",
+      "GET /health/fitbit/callback": "Fitbit OAuth callback",
+      "GET /health/fitbit/data": "Fitbit health data",
+      "GET /health/fitbit/activities": "Activity data",
+      "GET /health/fitbit/sleep": "Sleep data",
+      "GET /health/fitbit/heart": "Heart rate data",
+      "POST /health/vitals": "Manual vital signs entry"
+    },
+    "finance_service": {
+      "GET /finance/accounts": "Linked financial accounts",
+      "GET /finance/transactions": "Transaction history",
+      "GET /finance/plaid/auth": "Plaid Link token",
+      "POST /finance/plaid/webhook": "Plaid webhook handling"
+    },
+    "learning_service": {
+      "GET /learning/courses": "Available courses",
+      "GET /learning/courses/:id": "Course details",
+      "GET /learning/progress": "User learning progress",
+      "POST /learning/progress": "Update learning progress",
+      "GET /learning/analytics": "Learning analytics"
+    },
+    "notification_service": {
+      "GET /notifications": "User notifications",
+      "POST /notifications": "Create notification",
+      "PUT /notifications/:id/read": "Mark as read",
+      "DELETE /notifications/:id": "Delete notification",
+      "GET /notifications/preferences": "Notification preferences",
+      "PUT /notifications/preferences": "Update preferences"
+    },
+    "api_gateway": {
+      "GET /health": "Gateway health check",
+      "GET /status": "Service status overview",
+      "GET /api/dashboard": "Aggregated dashboard",
+      "GET /api/profile": "Complete user profile"
+    }
+  },
+  "database_schema": {
+    "users": {
+      "fields": [
+        "id (UUID, PK)",
+        "email (string, unique)",
+        "passwordHash (string)",
+        "fullName (string)",
+        "timezone (string, nullable)",
+        "avatar (string, nullable)",
+        "phoneNumber (string, nullable)",
+        "isActive (boolean)",
+        "role (string)",
+        "googleTokens (JSON, nullable)",
+        "fitbitTokens (JSON, nullable)",
+        "plaidTokens (JSON, nullable)",
+        "preferences (JSON, nullable)",
+        "createdAt (timestamp)",
+        "updatedAt (timestamp)",
+        "lastActiveAt (timestamp, nullable)"
+      ]
+    },
+    "vitals": {
+      "fields": [
+        "id (UUID, PK)",
+        "userId (UUID, FK)",
+        "type (string)",
+        "value (decimal)",
+        "unit (string)",
+        "timestamp (timestamp)",
+        "source (string, nullable)",
+        "metadata (JSON, nullable)"
+      ]
+    },
+    "transactions": {
+      "fields": [
+        "id (UUID, PK)",
+        "userId (UUID, FK)",
+        "accountId (string)",
+        "transactionId (string)",
+        "amount (decimal)",
+        "currency (string)",
+        "date (date)",
+        "description (string)",
+        "merchantName (string, nullable)",
+        "category (string, nullable)",
+        "location (JSON, nullable)"
+      ]
+    },
+    "courses": {
+      "fields": [
+        "id (UUID, PK)",
+        "title (string)",
+        "description (text)",
+        "category (string)",
+        "difficulty (string)",
+        "estimatedHours (number)",
+        "modules (JSON)",
+        "isActive (boolean)",
+        "thumbnailUrl (string, nullable)"
+      ]
+    },
+    "progress": {
+      "fields": [
+        "id (UUID, PK)",
+        "userId (UUID, FK)",
+        "courseId (UUID, FK)",
+        "moduleId (string, nullable)",
+        "lessonId (string, nullable)",
+        "progress (number)",
+        "timeSpent (number)",
+        "completed (boolean)",
+        "startedAt (timestamp, nullable)",
+        "completedAt (timestamp, nullable)"
+      ]
+    },
+    "notifications": {
+      "fields": [
+        "id (UUID, PK)",
+        "userId (UUID, FK)",
+        "title (string)",
+        "message (text)",
+        "type (string)",
+        "priority (string)",
+        "read (boolean)",
+        "readAt (timestamp, nullable)",
+        "channels (JSON, nullable)",
+        "deliveryStatus (JSON, nullable)",
+        "expiresAt (timestamp, nullable)"
+      ]
+    }
+  },
+  "third_party_integrations": {
+    "google_oauth": {
+      "purpose": "User authentication and Google services access",
+      "scopes": ["openid", "profile", "email", "calendar"],
+      "token_storage": "Encrypted in database",
+      "refresh_logic": "Automatic token refresh"
+    },
+    "google_calendar": {
+      "purpose": "Calendar event management",
+      "scopes": ["calendar.readonly", "calendar.events"],
+      "features": ["Event retrieval", "Event creation", "Event updates"],
+      "rate_limits": "1 billion queries per day"
+    },
+    "fitbit": {
+      "purpose": "Health and fitness data",
+      "scopes": ["activity", "heartrate", "location", "nutrition", "profile", "settings", "sleep", "social", "weight"],
+      "data_types": ["Steps", "Heart rate", "Sleep", "Weight", "Activities"],
+      "rate_limits": "150 requests per hour per user"
+    },
+    "plaid": {
+      "purpose": "Banking and financial data",
+      "products": ["transactions"],
+      "environments": ["sandbox", "development", "production"],
+      "webhooks": ["Transaction updates", "Account changes"],
+      "security": "Bank-level encryption"
+    }
+  },
+  "background_jobs": {
+    "email_processor": {
+      "queue": "email",
+      "purpose": "Asynchronous email sending",
+      "retry_policy": "3 attempts with exponential backoff",
+      "templates": ["welcome", "password-reset", "notifications"]
+    },
+    "notification_processor": {
+      "queue": "notification",
+      "purpose": "Multi-channel notification delivery",
+      "channels": ["in_app", "email", "sms", "push"],
+      "priority_levels": ["low", "normal", "high", "urgent"]
+    },
+    "sync_processor": {
+      "queue": "sync",
+      "purpose": "Third-party data synchronization",
+      "services": ["fitbit", "plaid", "google"],
+      "schedules": ["Every 6 hours", "On-demand", "Webhook-triggered"]
+    }
+  },
+  "caching_strategy": {
+    "redis_ttl": {
+      "user_profiles": "5 minutes",
+      "dashboard_data": "5 minutes",
+      "api_responses": "5 minutes (Google), 1 hour (Fitbit)",
+      "rate_limits": "1 minute windows"
+    },
+    "cache_keys": {
+      "user:{userId}:profile": "User profile data",
+      "user:{userId}:dashboard": "Aggregated dashboard",
+      "thirdparty:{service}:{userId}:{endpoint}": "External API responses",
+      "ratelimit:{identifier}:{window}": "Rate limiting counters"
+    }
+  },
+  "security_features": {
+    "authentication": {
+      "jwt_tokens": "15-minute expiration",
+      "refresh_tokens": "30-day expiration",
+      "password_hashing": "bcrypt with salt rounds 12",
+      "oauth_integration": "Google OAuth 2.0"
+    },
+    "authorization": {
+      "role_based_access": "user, admin roles",
+      "resource_ownership": "User-scoped data access",
+      "api_permissions": "Endpoint-level access control"
+    },
+    "data_protection": {
+      "encryption_at_rest": "Database field encryption",
+      "https_only": "SSL/TLS encryption",
+      "input_validation": "Comprehensive DTO validation",
+      "xss_protection": "Input sanitization"
+    },
+    "rate_limiting": {
+      "global_limit": "1000 requests/minute",
+      "user_limit": "100 requests/minute",
+      "ip_limit": "50 requests/minute",
+      "burst_handling": "Token bucket algorithm"
+    }
+  },
+  "testing_suite": {
+    "unit_tests": {
+      "framework": "Jest",
+      "coverage_threshold": {
+        "branches": 70,
+        "functions": 75,
+        "lines": 80,
+        "statements": 80
+      },
+      "test_files": [
+        "auth.service.spec.ts",
+        "cache.service.spec.ts",
+        "background-job.service.spec.ts",
+        "google-calendar.service.spec.ts",
+        "fitbit.service.spec.ts",
+        "plaid.service.spec.ts",
+        "notification.service.spec.ts"
+      ]
+    },
+    "integration_tests": {
+      "e2e_tests": [
+        "auth.e2e-spec.ts"
+      ],
+      "database_tests": "TypeORM integration tests",
+      "api_tests": "Full request/response cycles"
+    },
+    "test_utilities": {
+      "mock_services": "Comprehensive service mocking",
+      "test_data_factories": "Consistent test data generation",
+      "database_cleaning": "Automatic test database cleanup"
+    }
+  },
+  "deployment_configuration": {
+    "docker": {
+      "multi_stage_builds": "Optimized production images",
+      "security": "Non-root users, minimal attack surface",
+      "health_checks": "Container health monitoring"
+    },
+    "kubernetes": {
+      "deployments": "Rolling updates with zero downtime",
+      "services": "Load balancing and service discovery",
+      "configmaps": "Environment-specific configuration",
+      "secrets": "Secure credential management"
+    },
+    "ci_cd": {
+      "github_actions": "Automated testing and deployment",
+      "quality_gates": "Linting, testing, security scanning",
+      "environments": "Development, staging, production"
+    }
+  },
+  "monitoring_observability": {
+    "health_checks": {
+      "endpoints": "GET /health on all services",
+      "database_connectivity": "Connection pool monitoring",
+      "external_services": "Third-party API availability"
+    },
+    "logging": {
+      "structured_logs": "Winston JSON formatting",
+      "log_levels": "debug, info, warn, error",
+      "correlation_ids": "Request tracing",
+      "centralized_collection": "ELK stack integration"
+    },
+    "metrics": {
+      "performance": "Response times, throughput",
+      "business": "User registrations, API usage",
+      "infrastructure": "CPU, memory, disk usage",
+      "errors": "Error rates and types"
+    },
+    "alerting": {
+      "critical": "Service downtime, data loss",
+      "warning": "High error rates, performance degradation",
+      "info": "Deployment events, configuration changes"
+    }
+  },
+  "performance_characteristics": {
+    "response_times": {
+      "authentication": "< 200ms",
+      "dashboard_aggregation": "< 500ms",
+      "api_endpoints": "< 200ms (cached), < 2s (API calls)",
+      "file_uploads": "< 5s for 5MB files"
+    },
+    "throughput": {
+      "api_gateway": "1000 requests/minute",
+      "auth_service": "500 requests/minute",
+      "data_services": "200 requests/minute per service"
+    },
+    "scalability": {
+      "horizontal_scaling": "Stateless services, database read replicas",
+      "cache_distribution": "Redis cluster support",
+      "load_balancing": "Kubernetes service load balancing"
+    }
+  },
+  "compliance_security": {
+    "data_protection": {
+      "gdpr_compliance": "Data minimization, consent management",
+      "ccpa_compliance": "Data subject rights, opt-out mechanisms",
+      "data_retention": "Configurable retention policies"
+    },
+    "security_standards": {
+      "owasp_top_10": "Input validation, XSS prevention, CSRF protection",
+      "oauth_2_0": "Secure token handling, scope management",
+      "encryption": "TLS 1.3, AES-256 encryption"
+    },
+    "audit_trail": {
+      "user_actions": "Authentication, data access logging",
+      "admin_actions": "Configuration changes, user management",
+      "security_events": "Failed logins, suspicious activity"
+    }
+  },
+  "future_enhancements": {
+    "graphql_api": "Flexible data fetching and aggregation",
+    "real_time_features": "WebSocket-based live updates",
+    "ai_ml_integration": "Personalized recommendations, insights",
+    "mobile_optimization": "Mobile-specific API optimizations",
+    "multi_tenant": "Organization-based data isolation",
+    "advanced_analytics": "Business intelligence and reporting"
+  }
+}
