@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { FinanceAPI, Transaction, FinanceSummary } from '@/lib/api/finance'
+import { FinanceAPI, Transaction, FinanceSummary, PlaidAccount } from '@/lib/api/finance'
 
 export default function FinanceDashboard() {
   const [timeRange, setTimeRange] = useState('30d')
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [plaidAccounts, setPlaidAccounts] = useState<PlaidAccount[]>([])
+  const [plaidConnected, setPlaidConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,6 +30,16 @@ export default function FinanceDashboard() {
 
       setFinanceSummary(summary)
       setTransactions(transactionsData)
+
+      // Try to load Plaid accounts
+      try {
+        const accounts = await FinanceAPI.getAccounts()
+        setPlaidAccounts(accounts)
+        setPlaidConnected(true)
+      } catch (plaidErr) {
+        setPlaidConnected(false)
+        console.log('Plaid not connected:', plaidErr)
+      }
     } catch (err) {
       setError('Failed to load finance data')
       console.error('Error loading finance data:', err)
@@ -38,6 +50,17 @@ export default function FinanceDashboard() {
 
   const spendingData = FinanceAPI.getSpendingByCategory(transactions)
   const recentTransactions = FinanceAPI.getRecentTransactions(transactions, timeRange === '7d' ? 7 : 30)
+
+  const handleConnectPlaid = async () => {
+    try {
+      const linkToken = await FinanceAPI.getPlaidLinkToken()
+      // In a real implementation, you'd initialize Plaid Link SDK here
+      // For now, we'll just redirect to the auth endpoint
+      window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/finance/plaid/auth`
+    } catch (err) {
+      console.error('Failed to get Plaid link token:', err)
+    }
+  }
 
   if (loading) {
     return (
@@ -154,9 +177,46 @@ export default function FinanceDashboard() {
                 </div>
               </div>
             </div>
-          </div>
+           </div>
 
-          {/* Spending Trends Chart */}
+           {/* Plaid Integration */}
+           <div className="bg-white shadow rounded-lg p-6 mb-8">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Banking Integration</h3>
+               {!plaidConnected && (
+                 <Button onClick={handleConnectPlaid}>
+                   Connect Bank Account
+                 </Button>
+               )}
+             </div>
+
+             {plaidConnected && plaidAccounts.length > 0 ? (
+               <div className="space-y-4">
+                 <h4 className="text-md font-medium text-gray-700">Connected Accounts</h4>
+                 {plaidAccounts.map((account) => (
+                   <div key={account.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                     <div>
+                       <p className="font-medium text-gray-900">{account.name}</p>
+                       <p className="text-sm text-gray-500 capitalize">{account.type} • {account.subtype}</p>
+                     </div>
+                     <div className="text-right">
+                       <p className="font-medium text-gray-900">${account.balance.toLocaleString()}</p>
+                       <p className="text-sm text-gray-500">{account.currency}</p>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             ) : (
+               <div className="text-center py-8">
+                 <p className="text-gray-500 mb-4">Connect your bank accounts to automatically sync transactions</p>
+                 <Button onClick={handleConnectPlaid}>
+                   Connect with Plaid
+                 </Button>
+               </div>
+             )}
+           </div>
+
+           {/* Spending Trends Chart */}
           <div className="bg-white shadow rounded-lg p-6 mb-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Spending by Category</h3>
             <div className="h-64">

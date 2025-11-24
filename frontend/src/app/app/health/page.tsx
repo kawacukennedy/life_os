@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { HealthAPI, Vital, HealthSummary } from '@/lib/api/health'
+import { HealthAPI, Vital, HealthSummary, FitbitData } from '@/lib/api/health'
 
 export default function HealthDashboard() {
   const [timeRange, setTimeRange] = useState('7d')
   const [healthSummary, setHealthSummary] = useState<HealthSummary | null>(null)
   const [vitals, setVitals] = useState<Vital[]>([])
+  const [fitbitData, setFitbitData] = useState<FitbitData | null>(null)
+  const [fitbitConnected, setFitbitConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,6 +41,16 @@ export default function HealthDashboard() {
         endDate.toISOString().split('T')[0]
       )
       setVitals(vitalsData)
+
+      // Try to load Fitbit data
+      try {
+        const fitbit = await HealthAPI.getFitbitData()
+        setFitbitData(fitbit)
+        setFitbitConnected(true)
+      } catch (fitbitErr) {
+        setFitbitConnected(false)
+        console.log('Fitbit not connected:', fitbitErr)
+      }
     } catch (err) {
       setError('Failed to load health data')
       console.error('Error loading health data:', err)
@@ -190,9 +202,54 @@ export default function HealthDashboard() {
                 </div>
               </div>
             </div>
-          </div>
+           </div>
 
-          {/* Vitals Trends Chart */}
+           {/* Fitbit Integration */}
+           <div className="bg-white shadow rounded-lg p-6 mb-8">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Fitbit Integration</h3>
+               {!fitbitConnected && (
+                 <Button onClick={() => HealthAPI.getFitbitAuth()}>
+                   Connect Fitbit
+                 </Button>
+               )}
+             </div>
+
+             {fitbitConnected && fitbitData ? (
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="text-center">
+                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                     <span className="text-2xl">👣</span>
+                   </div>
+                   <p className="text-2xl font-bold text-gray-900">{fitbitData.activities.steps.toLocaleString()}</p>
+                   <p className="text-sm text-gray-500">Steps Today</p>
+                 </div>
+                 <div className="text-center">
+                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                     <span className="text-2xl">♥</span>
+                   </div>
+                   <p className="text-2xl font-bold text-gray-900">{fitbitData.heartRate.restingHeartRate}</p>
+                   <p className="text-sm text-gray-500">Resting HR (bpm)</p>
+                 </div>
+                 <div className="text-center">
+                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                     <span className="text-2xl">😴</span>
+                   </div>
+                   <p className="text-2xl font-bold text-gray-900">{Math.round(fitbitData.sleep.totalMinutesAsleep / 60)}h</p>
+                   <p className="text-sm text-gray-500">Sleep Last Night</p>
+                 </div>
+               </div>
+             ) : (
+               <div className="text-center py-8">
+                 <p className="text-gray-500 mb-4">Connect your Fitbit to sync your health data automatically</p>
+                 <Button onClick={() => HealthAPI.getFitbitAuth()}>
+                   Connect Fitbit Account
+                 </Button>
+               </div>
+             )}
+           </div>
+
+           {/* Vitals Trends Chart */}
           <div className="bg-white shadow rounded-lg p-6 mb-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Vitals Trends</h3>
             <div className="h-64">

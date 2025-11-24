@@ -9,8 +9,10 @@ import { HealthAPI, HealthSummary } from '@/lib/api/health'
 import { FinanceAPI, FinanceSummary } from '@/lib/api/finance'
 import { LearningAPI, LearningStats } from '@/lib/api/learning'
 import { NotificationsAPI } from '@/lib/api/notifications'
+import { AuthAPI, AggregatedDashboard } from '@/lib/api/auth'
 
 const AIAssistant = lazy(() => import('@/components/AIAssistant'))
+const CalendarEventsComponent = lazy(() => import('@/components/CalendarEvents'))
 
 interface DashboardTile {
   id: string
@@ -46,6 +48,55 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true)
+
+      // Try to use aggregated dashboard API first
+      try {
+        const aggregatedData = await AuthAPI.getAggregatedDashboard()
+
+        // Create dashboard tiles from aggregated data
+        const dashboardTiles: DashboardTile[] = [
+          {
+            id: 'health',
+            type: 'health',
+            title: 'Health Score',
+            value: `${Math.round((aggregatedData.health.averageHeartRate / 80) * 100)}/100`,
+            icon: '💚',
+            color: 'bg-accent-green',
+          },
+          {
+            id: 'finance',
+            type: 'finance',
+            title: 'Balance',
+            value: `$${aggregatedData.finance.totalBalance.toLocaleString()}`,
+            icon: '💰',
+            color: 'bg-accent-yellow',
+          },
+          {
+            id: 'learning',
+            type: 'learning',
+            title: 'Learning Progress',
+            value: `${Math.round(aggregatedData.learning.averageProgress)}%`,
+            icon: '📚',
+            color: 'bg-blue-500',
+          },
+          {
+            id: 'notifications',
+            type: 'notifications',
+            title: 'Notifications',
+            value: aggregatedData.notifications.unreadCount,
+            icon: '🔔',
+            color: 'bg-primary-start',
+          },
+        ]
+
+        setTiles(dashboardTiles)
+        setSuggestions(aggregatedData.suggestions.slice(0, 3))
+        return
+      } catch (aggregatedErr) {
+        console.log('Aggregated dashboard not available, falling back to individual APIs:', aggregatedErr)
+      }
+
+      // Fallback to individual service calls
       const userId = localStorage.getItem('userId') || 'user123'
 
       // Load data from all services in parallel
@@ -256,27 +307,19 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white shadow rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Today's Agenda</h3>
-                <div className="space-y-3">
-                  {[
-                    { time: '9:00 AM', task: 'Team standup', color: 'bg-primary-start' },
-                    { time: '11:00 AM', task: 'Doctor appointment', color: 'bg-accent-green' },
-                    { time: '2:00 PM', task: 'Review budget', color: 'bg-accent-yellow' },
-                  ].map((item, index) => (
-                    <div
-                      key={index}
-                      draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', index.toString())}
-                      onDragOver={(e) => e.preventDefault()}
-                      className="flex items-center cursor-move hover:bg-gray-50 p-2 rounded"
-                    >
-                      <div className={`w-2 h-2 rounded-full mr-3 ${item.color}`}></div>
-                      <span className="text-sm">{item.time} - {item.task}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+               <div className="bg-white shadow rounded-lg p-6">
+                 <h3 className="text-lg font-medium text-gray-900 mb-4">Today's Agenda</h3>
+                 <Suspense fallback={<div className="animate-pulse space-y-3">
+                   {[...Array(3)].map((_, i) => (
+                     <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                   ))}
+                 </div>}>
+                   <CalendarEventsComponent onAuthRequired={() => {
+                     // Handle calendar auth required
+                     console.log('Calendar auth required')
+                   }} />
+                 </Suspense>
+               </div>
 
               <div className="bg-white shadow rounded-lg p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">AI Suggestions</h3>

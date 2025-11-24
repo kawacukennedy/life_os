@@ -22,6 +22,20 @@ export interface FinanceSummary {
   lastUpdated: string;
 }
 
+export interface PlaidAccount {
+  id: string;
+  name: string;
+  type: string;
+  subtype: string;
+  balance: number;
+  currency: string;
+}
+
+export interface PlaidLinkToken {
+  link_token: string;
+  expiration: string;
+}
+
 export class FinanceAPI {
   private static async request(endpoint: string, options?: RequestInit) {
     const token = localStorage.getItem('token');
@@ -105,6 +119,22 @@ export class FinanceAPI {
     return transactions
       .filter(t => new Date(t.transactionDate) >= cutoffDate)
       .sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime());
+  }
+
+  // Plaid integration methods
+  static async getPlaidLinkToken(): Promise<PlaidLinkToken> {
+    return this.request('/plaid/auth');
+  }
+
+  static async getAccounts(): Promise<PlaidAccount[]> {
+    return this.request('/accounts');
+  }
+
+  static async handlePlaidWebhook(webhookData: any): Promise<void> {
+    return this.request('/plaid/webhook', {
+      method: 'POST',
+      body: JSON.stringify(webhookData),
+    });
   }
 
   // Helper method to calculate monthly totals

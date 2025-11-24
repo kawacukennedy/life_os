@@ -100,4 +100,22 @@ export class NotificationsAPI {
       body: JSON.stringify(notifications),
     });
   }
+
+  static async getPreferences() {
+    return this.request('/preferences');
+  }
+
+  static async updatePreferences(preferences: {
+    email?: boolean;
+    push?: boolean;
+    sms?: boolean;
+    health?: boolean;
+    finance?: boolean;
+    learning?: boolean;
+  }) {
+    return this.request('/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  }
 }

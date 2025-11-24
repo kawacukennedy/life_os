@@ -1,15 +1,58 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/contexts/ThemeContext'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { AuthAPI } from '@/lib/api/auth'
+import { HealthAPI } from '@/lib/api/health'
+import { FinanceAPI } from '@/lib/api/finance'
+import { NotificationsAPI } from '@/lib/api/notifications'
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
   const { i18n } = useTranslation()
   const { permission, requestPermission, subscribeToPush, sendNotification } = usePushNotifications()
+
+  useEffect(() => {
+    loadIntegrationsStatus()
+    loadNotificationPreferences()
+  }, [])
+
+  const loadIntegrationsStatus = async () => {
+    try {
+      // Check Google Calendar
+      try {
+        await AuthAPI.getCalendarEvents()
+        setIntegrations(prev => ({ ...prev, google: true }))
+      } catch {}
+
+      // Check Fitbit
+      try {
+        await HealthAPI.getFitbitData()
+        setIntegrations(prev => ({ ...prev, fitbit: true }))
+      } catch {}
+
+      // Check Plaid
+      try {
+        await FinanceAPI.getAccounts()
+        setIntegrations(prev => ({ ...prev, plaid: true }))
+      } catch {}
+    } catch (err) {
+      console.error('Error loading integrations:', err)
+    }
+  }
+
+  const loadNotificationPreferences = async () => {
+    try {
+      const prefs = await NotificationsAPI.getPreferences()
+      setNotificationPreferences(prefs)
+    } catch (err) {
+      console.error('Error loading notification preferences:', err)
+    }
+  }
+
   const [settings, setSettings] = useState({
     fullName: 'John Doe',
     email: 'john@example.com',
@@ -21,14 +64,64 @@ export default function SettingsPage() {
     deleteAccount: false,
   })
 
+  const [integrations, setIntegrations] = useState({
+    google: false,
+    fitbit: false,
+    plaid: false,
+  })
+
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    email: true,
+    push: false,
+    sms: false,
+    health: true,
+    finance: true,
+    learning: true,
+  })
+
+  const [avatar, setAvatar] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
   const handleLanguageChange = (language: string) => {
     setSettings({ ...settings, language })
     i18n.changeLanguage(language)
   }
 
-  const handleSave = () => {
-    // TODO: Save settings
-    console.log('Saving settings:', settings)
+  const handleSave = async () => {
+    try {
+      // Save notification preferences
+      await NotificationsAPI.updatePreferences(notificationPreferences)
+      console.log('Settings saved successfully')
+    } catch (err) {
+      console.error('Error saving settings:', err)
+    }
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAvatar(file)
+      const reader = new FileReader()
+      reader.onload = (e) => setAvatarPreview(e.target?.result as string)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleAvatarUpload = async () => {
+    if (!avatar) return
+    try {
+      await AuthAPI.uploadAvatar(avatar)
+      setAvatar(null)
+      setAvatarPreview(null)
+      // Refresh user data
+    } catch (err) {
+      console.error('Error uploading avatar:', err)
+    }
+  }
+
+  const handleDisconnectIntegration = async (service: 'google' | 'fitbit' | 'plaid') => {
+    // In a real implementation, you'd call the backend to disconnect
+    setIntegrations(prev => ({ ...prev, [service]: false }))
   }
 
   return (
@@ -97,9 +190,135 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-            </div>
+             </div>
 
-            {/* Privacy Settings */}
+             {/* Integrations */}
+             <div className="bg-white shadow rounded-lg">
+               <div className="px-6 py-4 border-b border-gray-200">
+                 <h2 className="text-lg font-medium text-gray-900">Integrations</h2>
+               </div>
+               <div className="px-6 py-4 space-y-4">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center">
+                     <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                       <span className="text-red-600 font-bold">G</span>
+                     </div>
+                     <div>
+                       <h3 className="text-sm font-medium text-gray-900">Google Calendar</h3>
+                       <p className="text-sm text-gray-500">Sync your calendar events</p>
+                     </div>
+                   </div>
+                   {integrations.google ? (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => handleDisconnectIntegration('google')}
+                     >
+                       Disconnect
+                     </Button>
+                   ) : (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => AuthAPI.getGoogleCalendarAuth()}
+                     >
+                       Connect
+                     </Button>
+                   )}
+                 </div>
+
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center">
+                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                       <span className="text-green-600">🏃</span>
+                     </div>
+                     <div>
+                       <h3 className="text-sm font-medium text-gray-900">Fitbit</h3>
+                       <p className="text-sm text-gray-500">Track your health and fitness data</p>
+                     </div>
+                   </div>
+                   {integrations.fitbit ? (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => handleDisconnectIntegration('fitbit')}
+                     >
+                       Disconnect
+                     </Button>
+                   ) : (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => HealthAPI.getFitbitAuth()}
+                     >
+                       Connect
+                     </Button>
+                   )}
+                 </div>
+
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center">
+                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                       <span className="text-blue-600">💳</span>
+                     </div>
+                     <div>
+                       <h3 className="text-sm font-medium text-gray-900">Banking (Plaid)</h3>
+                       <p className="text-sm text-gray-500">Connect your financial accounts</p>
+                     </div>
+                   </div>
+                   {integrations.plaid ? (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => handleDisconnectIntegration('plaid')}
+                     >
+                       Disconnect
+                     </Button>
+                   ) : (
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/finance/plaid/auth`}
+                     >
+                       Connect
+                     </Button>
+                   )}
+                 </div>
+               </div>
+             </div>
+
+             {/* Profile Picture */}
+             <div className="bg-white shadow rounded-lg">
+               <div className="px-6 py-4 border-b border-gray-200">
+                 <h2 className="text-lg font-medium text-gray-900">Profile Picture</h2>
+               </div>
+               <div className="px-6 py-4">
+                 <div className="flex items-center space-x-4">
+                   <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
+                     {avatarPreview ? (
+                       <img src={avatarPreview} alt="Avatar preview" className="w-20 h-20 rounded-full object-cover" />
+                     ) : (
+                       <span className="text-gray-500 text-2xl">👤</span>
+                     )}
+                   </div>
+                   <div className="flex-1">
+                     <input
+                       type="file"
+                       accept="image/*"
+                       onChange={handleAvatarChange}
+                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-start file:text-white hover:file:bg-primary-end"
+                     />
+                     {avatar && (
+                       <Button onClick={handleAvatarUpload} className="mt-2">
+                         Upload Avatar
+                       </Button>
+                     )}
+                   </div>
+                 </div>
+               </div>
+             </div>
+
+             {/* Privacy Settings */}
             <div className="bg-white shadow rounded-lg">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-medium text-gray-900">Privacy & Data</h2>
@@ -151,68 +370,118 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Notification Settings */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Notifications</h2>
-              </div>
-              <div className="px-6 py-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900">Email Notifications</h3>
-                    <p className="text-sm text-gray-500">Receive updates and reminders via email</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications}
-                      onChange={(e) => setSettings({ ...settings, notifications: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
-                  </label>
-                </div>
+             {/* Notification Settings */}
+             <div className="bg-white shadow rounded-lg">
+               <div className="px-6 py-4 border-b border-gray-200">
+                 <h2 className="text-lg font-medium text-gray-900">Notification Preferences</h2>
+               </div>
+               <div className="px-6 py-4 space-y-6">
+                 <div>
+                   <h3 className="text-sm font-medium text-gray-900 mb-3">Channels</h3>
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <span className="text-sm text-gray-700">Email</span>
+                         <p className="text-xs text-gray-500">Receive notifications via email</p>
+                       </div>
+                       <label className="relative inline-flex items-center cursor-pointer">
+                         <input
+                           type="checkbox"
+                           checked={notificationPreferences.email}
+                           onChange={(e) => setNotificationPreferences({ ...notificationPreferences, email: e.target.checked })}
+                           className="sr-only peer"
+                         />
+                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
+                       </label>
+                     </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900">Push Notifications</h3>
-                    <p className="text-sm text-gray-500">Receive push notifications in your browser</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    {permission === 'default' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          const perm = await requestPermission()
-                          if (perm === 'granted') {
-                            await subscribeToPush()
-                            setSettings({ ...settings, pushNotifications: true })
-                          }
-                        }}
-                      >
-                        Enable
-                      </Button>
-                    )}
-                    {permission === 'granted' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => sendNotification('Test Notification', {
-                          body: 'This is a test push notification!',
-                          icon: '/icon-192.png',
-                        })}
-                      >
-                        Test
-                      </Button>
-                    )}
-                    {permission === 'denied' && (
-                      <span className="text-sm text-red-600">Blocked</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <span className="text-sm text-gray-700">Push Notifications</span>
+                         <p className="text-xs text-gray-500">Receive push notifications in your browser</p>
+                       </div>
+                       <div className="flex space-x-2">
+                         {permission === 'default' && (
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={async () => {
+                               const perm = await requestPermission()
+                               if (perm === 'granted') {
+                                 await subscribeToPush()
+                                 setNotificationPreferences({ ...notificationPreferences, push: true })
+                               }
+                             }}
+                           >
+                             Enable
+                           </Button>
+                         )}
+                         {permission === 'granted' && (
+                           <label className="relative inline-flex items-center cursor-pointer">
+                             <input
+                               type="checkbox"
+                               checked={notificationPreferences.push}
+                               onChange={(e) => setNotificationPreferences({ ...notificationPreferences, push: e.target.checked })}
+                               className="sr-only peer"
+                             />
+                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
+                           </label>
+                         )}
+                         {permission === 'denied' && (
+                           <span className="text-sm text-red-600">Blocked</span>
+                         )}
+                       </div>
+                     </div>
+
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <span className="text-sm text-gray-700">SMS</span>
+                         <p className="text-xs text-gray-500">Receive notifications via SMS</p>
+                       </div>
+                       <label className="relative inline-flex items-center cursor-pointer">
+                         <input
+                           type="checkbox"
+                           checked={notificationPreferences.sms}
+                           onChange={(e) => setNotificationPreferences({ ...notificationPreferences, sms: e.target.checked })}
+                           className="sr-only peer"
+                         />
+                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
+                       </label>
+                     </div>
+                   </div>
+                 </div>
+
+                 <div>
+                   <h3 className="text-sm font-medium text-gray-900 mb-3">Categories</h3>
+                   <div className="space-y-3">
+                     {[
+                       { key: 'health', label: 'Health & Fitness', desc: 'Updates about your health data and goals' },
+                       { key: 'finance', label: 'Finance', desc: 'Financial updates and budget alerts' },
+                       { key: 'learning', label: 'Learning', desc: 'Course progress and learning recommendations' },
+                     ].map(({ key, label, desc }) => (
+                       <div key={key} className="flex items-center justify-between">
+                         <div>
+                           <span className="text-sm text-gray-700">{label}</span>
+                           <p className="text-xs text-gray-500">{desc}</p>
+                         </div>
+                         <label className="relative inline-flex items-center cursor-pointer">
+                           <input
+                             type="checkbox"
+                             checked={notificationPreferences[key as keyof typeof notificationPreferences] as boolean}
+                             onChange={(e) => setNotificationPreferences({
+                               ...notificationPreferences,
+                               [key]: e.target.checked
+                             })}
+                             className="sr-only peer"
+                           />
+                           <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
+                         </label>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </div>
+             </div>
           </div>
         </div>
       </main>

@@ -1,8 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from './ui/Button'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
+import { AuthAPI } from '@/lib/api/auth'
+import { HealthAPI } from '@/lib/api/health'
+import { FinanceAPI } from '@/lib/api/finance'
+import { LearningAPI } from '@/lib/api/learning'
 
 interface Message {
   id: string
@@ -15,7 +19,33 @@ export default function AIAssistant() {
     { id: '1', text: 'Hello! How can I help you optimize your day?', sender: 'ai' }
   ])
   const [input, setInput] = useState('')
+  const [userData, setUserData] = useState<any>(null)
   const { isListening, transcript, startListening, stopListening, clearTranscript } = useVoiceInput()
+
+  useEffect(() => {
+    loadUserData()
+  }, [])
+
+  const loadUserData = async () => {
+    try {
+      const userId = localStorage.getItem('userId') || 'user123'
+
+      // Load data in parallel
+      const [health, finance, learning] = await Promise.allSettled([
+        HealthAPI.getHealthSummary(userId),
+        FinanceAPI.getFinanceSummary(userId),
+        LearningAPI.getLearningStats(userId),
+      ])
+
+      setUserData({
+        health: health.status === 'fulfilled' ? health.value : null,
+        finance: finance.status === 'fulfilled' ? finance.value : null,
+        learning: learning.status === 'fulfilled' ? learning.value : null,
+      })
+    } catch (err) {
+      console.error('Error loading user data for AI:', err)
+    }
+  }
 
   // Update input when voice transcript changes
   React.useEffect(() => {
@@ -31,19 +61,19 @@ export default function AIAssistant() {
     setMessages(prev => [...prev, userMessage])
     setInput('')
 
-    // Advanced AI response simulation
+    // Advanced AI response simulation with real data
     setTimeout(() => {
       let response = ''
       const lowerInput = input.toLowerCase()
 
       if (lowerInput.includes('plan') || lowerInput.includes('schedule')) {
-        response = 'I\'ve analyzed your calendar and health data. Here\'s your optimized daily plan:\n\n• 9:00 AM: Team standup (30 min)\n• 11:00 AM: Doctor appointment\n• 2:00 PM: Budget review\n• 6:00 PM: Exercise (recommended based on your heart rate trends)\n\nWould you like me to add these to your calendar?'
+        response = generatePlanningResponse()
       } else if (lowerInput.includes('health') || lowerInput.includes('fitness')) {
-        response = 'Based on your recent vitals:\n\n• Your average heart rate is within normal range\n• You\'ve been consistently active with 8,500+ daily steps\n• Sleep quality could improve - aim for 7-9 hours\n\nI recommend a 20-minute walk today to maintain your streak!'
+        response = generateHealthResponse()
       } else if (lowerInput.includes('finance') || lowerInput.includes('budget')) {
-        response = 'Your financial overview:\n\n• Current balance: $15,432\n• Monthly income: $3,200\n• Top spending category: Food ($97.82)\n\nYou\'re on track to save 20% this month. Consider reviewing your entertainment subscriptions.'
+        response = generateFinanceResponse()
       } else if (lowerInput.includes('learn') || lowerInput.includes('course')) {
-        response = 'Your learning progress:\n\n• Productivity course: 75% complete\n• Next lesson: "Time Management Techniques"\n• Estimated completion: 2 weeks\n\nYou\'ve been consistent! Keep up the great work.'
+        response = generateLearningResponse()
       } else if (lowerInput.includes('task') || lowerInput.includes('remind')) {
         response = 'I\'ve created a new task for you and set a reminder. You can view all your tasks in the dashboard. Is there anything else I can help you organize?'
       } else {
@@ -57,6 +87,146 @@ export default function AIAssistant() {
       }
       setMessages(prev => [...prev, aiMessage])
     }, 1500)
+
+    const generatePlanningResponse = () => {
+      const health = userData?.health
+      const finance = userData?.finance
+
+      let plan = 'Here\'s your optimized daily plan based on your data:\n\n'
+
+      if (health) {
+        if (health.averageHeartRate > 75) {
+          plan += '• 7:00 AM: Morning meditation (10 min) - Help lower stress\n'
+        }
+        if (health.totalSteps < 7000) {
+          plan += '• 8:00 AM: Morning walk (30 min) - Boost your step count\n'
+        }
+      }
+
+      plan += '• 9:00 AM: Review calendar and priorities\n'
+      plan += '• 12:00 PM: Lunch break and quick walk\n'
+
+      if (finance && finance.monthlyExpenses > finance.monthlyIncome * 0.8) {
+        plan += '• 3:00 PM: Budget review (15 min)\n'
+      }
+
+      plan += '• 6:00 PM: Exercise routine\n'
+      plan += '• 8:00 PM: Learning session\n'
+      plan += '• 10:00 PM: Wind down and sleep prep\n\n'
+
+      plan += 'Would you like me to add these to your calendar?'
+      return plan
+    }
+
+    const generateHealthResponse = () => {
+      const health = userData?.health
+
+      if (!health) {
+        return 'I don\'t have access to your health data yet. Please connect your Fitbit or add manual health entries to get personalized insights.'
+      }
+
+      let response = 'Based on your recent health data:\n\n'
+
+      if (health.averageHeartRate < 60) {
+        response += '• Resting heart rate: Excellent (' + Math.round(health.averageHeartRate) + ' bpm)\n'
+      } else if (health.averageHeartRate < 80) {
+        response += '• Resting heart rate: Good (' + Math.round(health.averageHeartRate) + ' bpm)\n'
+      } else {
+        response += '• Resting heart rate: Elevated (' + Math.round(health.averageHeartRate) + ' bpm) - Consider consulting a doctor\n'
+      }
+
+      if (health.totalSteps >= 10000) {
+        response += '• Daily steps: Excellent (' + health.totalSteps.toLocaleString() + ') - Keep it up!\n'
+      } else if (health.totalSteps >= 7000) {
+        response += '• Daily steps: Good (' + health.totalSteps.toLocaleString() + ') - Aim for 10,000\n'
+      } else {
+        response += '• Daily steps: Below target (' + health.totalSteps.toLocaleString() + ') - Let\'s increase activity\n'
+      }
+
+      if (health.averageSleepHours >= 7) {
+        response += '• Sleep: Great (' + health.averageSleepHours.toFixed(1) + ' hours)\n'
+      } else {
+        response += '• Sleep: Could improve (' + health.averageSleepHours.toFixed(1) + ' hours) - Aim for 7-9 hours\n'
+      }
+
+      response += '\nRecommendations:\n'
+      if (health.averageHeartRate > 75) {
+        response += '• Practice stress-reduction techniques\n'
+      }
+      if (health.totalSteps < 7000) {
+        response += '• Take a 20-minute walk today\n'
+      }
+      if (health.averageSleepHours < 7) {
+        response += '• Establish a consistent bedtime routine\n'
+      }
+
+      return response
+    }
+
+    const generateFinanceResponse = () => {
+      const finance = userData?.finance
+
+      if (!finance) {
+        return 'I don\'t have access to your financial data yet. Please connect your bank accounts through Plaid to get personalized financial insights.'
+      }
+
+      let response = 'Your financial overview:\n\n'
+      response += `• Current balance: $${finance.totalBalance.toLocaleString()}\n`
+      response += `• Monthly income: $${finance.monthlyIncome.toLocaleString()}\n`
+      response += `• Monthly expenses: $${finance.monthlyExpenses.toLocaleString()}\n`
+
+      const savingsRate = ((finance.monthlyIncome - finance.monthlyExpenses) / finance.monthlyIncome) * 100
+      if (savingsRate > 20) {
+        response += `• Savings rate: Excellent (${savingsRate.toFixed(1)}%)\n`
+      } else if (savingsRate > 10) {
+        response += `• Savings rate: Good (${savingsRate.toFixed(1)}%)\n`
+      } else if (savingsRate > 0) {
+        response += `• Savings rate: ${savingsRate.toFixed(1)}% - Consider reducing expenses\n`
+      } else {
+        response += `• Savings rate: Negative - Expenses exceed income\n`
+      }
+
+      response += '\nRecommendations:\n'
+      if (finance.monthlyExpenses > finance.monthlyIncome * 0.9) {
+        response += '• Review your largest expense categories\n'
+        response += '• Consider creating a detailed budget\n'
+      }
+      if (finance.totalBalance < 1000) {
+        response += '• Build an emergency fund\n'
+      }
+
+      return response
+    }
+
+    const generateLearningResponse = () => {
+      const learning = userData?.learning
+
+      if (!learning) {
+        return 'I don\'t have access to your learning data yet. Start a course to track your progress and get personalized recommendations.'
+      }
+
+      let response = 'Your learning progress:\n\n'
+      response += `• Overall progress: ${Math.round(learning.averageProgress)}%\n`
+      response += `• Courses completed: ${learning.coursesCompleted}\n`
+      response += `• Total time spent: ${Math.round(learning.totalTimeSpent / 60)} hours\n`
+
+      if (learning.averageProgress > 75) {
+        response += '\nYou\'re doing great! Keep up the momentum.'
+      } else if (learning.averageProgress > 50) {
+        response += '\nYou\'re making good progress. Stay consistent!'
+      } else {
+        response += '\nLet\'s get you back on track with your learning goals.'
+      }
+
+      response += '\n\nRecommendations:\n'
+      if (learning.averageProgress < 50) {
+        response += '• Dedicate 30 minutes daily to learning\n'
+        response += '• Break down courses into smaller, manageable sessions\n'
+      }
+      response += '• Consider exploring related courses to deepen your knowledge\n'
+
+      return response
+    }
   }
 
   return (

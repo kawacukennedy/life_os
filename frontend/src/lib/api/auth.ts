@@ -11,6 +11,54 @@ export interface DashboardData {
   suggestions: string[];
 }
 
+export interface AggregatedDashboard {
+  health: {
+    averageHeartRate: number;
+    totalSteps: number;
+    averageSleepHours: number;
+  };
+  finance: {
+    totalBalance: number;
+    monthlyIncome: number;
+    monthlyExpenses: number;
+  };
+  learning: {
+    averageProgress: number;
+    coursesCompleted: number;
+  };
+  notifications: {
+    unreadCount: number;
+  };
+  suggestions: string[];
+}
+
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: {
+    dateTime?: string;
+    date?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+  };
+  location?: string;
+  description?: string;
+}
+
+export interface CreateEventData {
+  summary: string;
+  start: {
+    dateTime: string;
+  };
+  end: {
+    dateTime: string;
+  };
+  location?: string;
+  description?: string;
+}
+
 export class AuthAPI {
   private static async request(endpoint: string, options?: RequestInit) {
     const token = localStorage.getItem('token');
@@ -34,6 +82,23 @@ export class AuthAPI {
 
   static async getDashboard(): Promise<DashboardData> {
     return this.request('/dashboard');
+  }
+
+  static async getAggregatedDashboard(): Promise<AggregatedDashboard> {
+    // Call gateway aggregated dashboard
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/dashboard`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    return response.json();
   }
 
   static async login(credentials: { email: string; password: string }) {
@@ -66,5 +131,46 @@ export class AuthAPI {
 
   static async googleLogin() {
     window.location.href = `${API_BASE}/api/auth/google`;
+  }
+
+  static async getGoogleCalendarAuth() {
+    window.location.href = `${API_BASE}/api/auth/google/calendar/auth`;
+  }
+
+  static async getCalendarEvents(): Promise<CalendarEvent[]> {
+    return this.request('/google/calendar/events');
+  }
+
+  static async createCalendarEvent(eventData: CreateEventData): Promise<CalendarEvent> {
+    return this.request('/google/calendar/events', {
+      method: 'POST',
+      body: JSON.stringify(eventData),
+    });
+  }
+
+  static async uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/auth/upload/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Avatar upload failed');
+    }
+
+    return response.json();
+  }
+
+  static async deleteAvatar(): Promise<void> {
+    return this.request('/upload/avatar', {
+      method: 'DELETE',
+    });
   }
 }

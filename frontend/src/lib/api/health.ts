@@ -17,6 +17,28 @@ export interface HealthSummary {
   vitalsCount: number;
 }
 
+export interface FitbitData {
+  activities: {
+    steps: number;
+    distance: number;
+    calories: number;
+  };
+  heartRate: {
+    restingHeartRate: number;
+    zones: {
+      fatBurn: number;
+      cardio: number;
+      peak: number;
+    };
+  };
+  sleep: {
+    totalMinutesAsleep: number;
+    totalSleepRecords: number;
+    efficiency: number;
+  };
+  lastSync: string;
+}
+
 export class HealthAPI {
   private static async request(endpoint: string, options?: RequestInit) {
     const token = localStorage.getItem('token');
@@ -84,6 +106,27 @@ export class HealthAPI {
       const vitalDate = new Date(vital.recordedAt).toISOString().split('T')[0];
       return vitalDate >= startDate && vitalDate <= endDate;
     });
+  }
+
+  // Fitbit integration methods
+  static async getFitbitAuth() {
+    window.location.href = `${API_BASE}/api/health/fitbit/auth`;
+  }
+
+  static async getFitbitData(): Promise<FitbitData> {
+    return this.request('/fitbit/data');
+  }
+
+  static async getFitbitActivities(): Promise<any> {
+    return this.request('/fitbit/activities');
+  }
+
+  static async getFitbitSleep(): Promise<any> {
+    return this.request('/fitbit/sleep');
+  }
+
+  static async getFitbitHeartRate(): Promise<any> {
+    return this.request('/fitbit/heart');
   }
 
   // Helper method to aggregate vitals by date
