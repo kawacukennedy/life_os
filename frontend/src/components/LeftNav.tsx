@@ -2,10 +2,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
+  { href: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
   { href: '/app/health', label: 'Health', icon: '💚' },
   { href: '/app/finance', label: 'Finance', icon: '💰' },
   { href: '/app/learn', label: 'Learn', icon: '📚' },
+  { href: '/app/routines', label: 'Routines', icon: '🤖' },
+  { href: '/app/analytics', label: 'Analytics', icon: '📊' },
   { href: '/app/notifications', label: 'Notifications', icon: '🔔' },
   { href: '/app/settings', label: 'Settings', icon: '⚙️' },
 ]

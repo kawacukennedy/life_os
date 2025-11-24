@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { DashboardSkeleton } from '@/components/ui/CardSkeleton'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useWebSocket } from '@/hooks/useWebSocket'
+import { useSwipeGesture } from '@/hooks/useSwipeGesture'
 import { HealthAPI, HealthSummary } from '@/lib/api/health'
 import { FinanceAPI, FinanceSummary } from '@/lib/api/finance'
 import { LearningAPI, LearningStats } from '@/lib/api/learning'
@@ -31,9 +33,48 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
+  const userId = localStorage.getItem('userId') || 'user123'
+  const { socket } = useWebSocket(userId)
+
+  // Mobile swipe gestures
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeGesture(
+    () => router.push('/app/health'), // Swipe left -> Health
+    () => router.push('/app/finance'), // Swipe right -> Finance
+    () => router.push('/app/learn'), // Swipe up -> Learn
+    () => router.push('/app/analytics') // Swipe down -> Analytics
+  )
+
   useEffect(() => {
     loadDashboardData()
   }, [])
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('health-update', (data) => {
+        console.log('Real-time health update:', data)
+        // Refresh health data
+        loadDashboardData()
+      })
+
+      socket.on('finance-update', (data) => {
+        console.log('Real-time finance update:', data)
+        // Refresh finance data
+        loadDashboardData()
+      })
+
+      socket.on('learning-update', (data) => {
+        console.log('Real-time learning update:', data)
+        // Refresh learning data
+        loadDashboardData()
+      })
+
+      return () => {
+        socket.off('health-update')
+        socket.off('finance-update')
+        socket.off('learning-update')
+      }
+    }
+  }, [socket])
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -251,9 +292,12 @@ export default function DashboardPage() {
       </header>
       <main
         id="main-content"
-        className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8"
+        className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 pb-20 md:pb-6"
         role="main"
         aria-label="Dashboard content"
+        onTouchStart={(e) => onTouchStart(e.nativeEvent)}
+        onTouchMove={(e) => onTouchMove(e.nativeEvent)}
+        onTouchEnd={onTouchEnd}
       >
         <div className="px-4 py-6 sm:px-0">
           <div
@@ -344,6 +388,44 @@ export default function DashboardPage() {
             <Suspense fallback={<div className="bg-white shadow rounded-lg p-6 h-96 flex items-center justify-center">Loading AI Assistant...</div>}>
               <AIAssistant />
             </Suspense>
+          </div>
+
+          {/* Mobile Quick Actions */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <div className="grid grid-cols-4 gap-2">
+              <Button
+                onClick={() => router.push('/app/health')}
+                className="flex flex-col items-center p-2 h-auto"
+                variant="ghost"
+              >
+                <span className="text-lg">💚</span>
+                <span className="text-xs mt-1">Health</span>
+              </Button>
+              <Button
+                onClick={() => router.push('/app/finance')}
+                className="flex flex-col items-center p-2 h-auto"
+                variant="ghost"
+              >
+                <span className="text-lg">💰</span>
+                <span className="text-xs mt-1">Finance</span>
+              </Button>
+              <Button
+                onClick={() => router.push('/app/learn')}
+                className="flex flex-col items-center p-2 h-auto"
+                variant="ghost"
+              >
+                <span className="text-lg">📚</span>
+                <span className="text-xs mt-1">Learn</span>
+              </Button>
+              <Button
+                onClick={() => router.push('/app/routines')}
+                className="flex flex-col items-center p-2 h-auto"
+                variant="ghost"
+              >
+                <span className="text-lg">🤖</span>
+                <span className="text-xs mt-1">AI</span>
+              </Button>
+            </div>
           </div>
         </div>
       </main>
