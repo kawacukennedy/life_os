@@ -70,4 +70,26 @@ export class HealthController {
   async syncFitbitData(@Query('accessToken') accessToken: string, @Query('userId') userId: string) {
     return this.fitbitService.syncHealthData(accessToken, userId);
   }
+
+  // Data Ingestion
+  @Post('ingest/fitbit')
+  async ingestFitbitData(@Body() body: { userId: string; accessToken: string }) {
+    return this.healthService.ingestFitbitData(body.userId, body.accessToken);
+  }
+
+  @Post('ingest/apple-health')
+  async ingestAppleHealthData(@Body() body: { userId: string; healthData: any }) {
+    return this.healthService.ingestAppleHealthData(body.userId, body.healthData);
+  }
+
+  // Wearable Auth
+  @Get('wearable/auth')
+  async getWearableAuthUrl(@Query('provider') provider: string, @Query('userId') userId: string) {
+    return this.healthService.getWearableAuthUrl(provider, userId);
+  }
+
+  @Post('wearable/callback')
+  async handleWearableCallback(@Body() body: { provider: string; code: string; state: string }) {
+    return this.healthService.handleWearableCallback(body.provider, body.code, body.state);
+  }
 }
