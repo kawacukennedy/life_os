@@ -6,6 +6,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import LayoutWrapper from '@/components/LayoutWrapper'
+import ReactQueryProvider from '@/components/ReactQueryProvider'
+import GraphQLProvider from '@/components/GraphQLProvider'
 import '@/lib/i18n'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -33,12 +35,16 @@ export default function RootLayout({
         </a>
         <ThemeProvider>
           <ErrorBoundary>
-            <ToastProvider>
-              <PWARegister />
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
-            </ToastProvider>
+            <ReactQueryProvider>
+              <GraphQLProvider>
+                <ToastProvider>
+                  <PWARegister />
+                  <LayoutWrapper>
+                    {children}
+                  </LayoutWrapper>
+                </ToastProvider>
+              </GraphQLProvider>
+            </ReactQueryProvider>
           </ErrorBoundary>
         </ThemeProvider>
       </body>
