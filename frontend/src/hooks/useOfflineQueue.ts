@@ -1,92 +1,30 @@
 import { useEffect, useState } from 'react'
-
-interface QueuedAction {
-  id: string
-  type: string
-  data: any
-  timestamp: number
-}
+import { offlineQueue } from '@/lib/offline'
 
 export function useOfflineQueue() {
   const [isOnline, setIsOnline] = useState(true)
-  const [queue, setQueue] = useState<QueuedAction[]>([])
+  const [queueLength, setQueueLength] = useState(0)
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true)
-      processQueue()
-    }
-    const handleOffline = () => setIsOnline(false)
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    setIsOnline(navigator.onLine)
-
-    // Load queue from localStorage
-    const savedQueue = localStorage.getItem('offlineQueue')
-    if (savedQueue) {
-      setQueue(JSON.parse(savedQueue))
+    const initOffline = async () => {
+      await offlineQueue.init()
+      setIsOnline(offlineQueue.getStatus())
     }
 
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
+    initOffline()
+
+    const unsubscribe = offlineQueue.onStatusChange((online) => {
+      setIsOnline(online)
+    })
+
+    return unsubscribe
   }, [])
 
-  const addToQueue = (action: Omit<QueuedAction, 'id' | 'timestamp'>) => {
-    const queuedAction: QueuedAction = {
-      ...action,
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-    }
-
-    setQueue(prev => {
-      const newQueue = [...prev, queuedAction]
-      localStorage.setItem('offlineQueue', JSON.stringify(newQueue))
-      return newQueue
-    })
+  const addToQueue = async (type: string, data: any) => {
+    await offlineQueue.addToQueue(type, data)
+    // Update queue length (in a real implementation, you'd get this from the DB)
+    setQueueLength(prev => prev + 1)
   }
 
-  const processQueue = async () => {
-    if (!isOnline || queue.length === 0) return
-
-    const actionsToProcess = [...queue]
-
-    for (const action of actionsToProcess) {
-      try {
-        // Process each action based on type
-        switch (action.type) {
-          case 'add-health-vital':
-            await fetch('/api/health/vitals', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(action.data),
-            })
-            break
-          case 'add-transaction':
-            await fetch('/api/finance/transactions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(action.data),
-            })
-            break
-          // Add more action types as needed
-        }
-
-        // Remove from queue on success
-        setQueue(prev => {
-          const newQueue = prev.filter(a => a.id !== action.id)
-          localStorage.setItem('offlineQueue', JSON.stringify(newQueue))
-          return newQueue
-        })
-      } catch (error) {
-        console.error('Failed to process queued action:', error)
-        // Keep in queue for retry
-      }
-    }
-  }
-
-  return { isOnline, queue, addToQueue, processQueue }
+  return { isOnline, queueLength, addToQueue }
 }

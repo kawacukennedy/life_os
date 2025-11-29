@@ -1,436 +1,845 @@
 {
-  "name": "LifeOS Backend",
-  "version": "1.0.0",
-  "description": "Comprehensive microservices-based backend for LifeOS platform",
-  "architecture": {
-    "type": "Microservices",
-    "services": [
-      {
-        "name": "API Gateway",
-        "port": 3000,
-        "purpose": "Central entry point, routing, authentication, rate limiting",
-        "technologies": ["NestJS", "JWT", "Redis", "Circuit Breaker"]
-      },
-      {
-        "name": "Auth Service",
-        "port": 3001,
-        "purpose": "User authentication, Google OAuth, profile management",
-        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "JWT", "Google APIs"],
-        "features": [
-          "User registration and login",
-          "JWT token management",
-          "Google OAuth integration",
-          "Google Calendar API integration",
-          "User profile and avatar management",
-          "Background job processing"
-        ]
-      },
-      {
-        "name": "Health Service",
-        "port": 3002,
-        "purpose": "Fitness tracking and health data management",
-        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "Fitbit API"],
-        "features": [
-          "Fitbit OAuth integration",
-          "Health data synchronization",
-          "Vital signs tracking (heart rate, sleep, steps)",
-          "Health analytics and insights",
-          "Real-time data aggregation"
-        ]
-      },
-      {
-        "name": "Finance Service",
-        "port": 3003,
-        "purpose": "Financial data and banking integration",
-        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "Plaid API"],
-        "features": [
-          "Plaid Link integration",
-          "Bank account connection",
-          "Transaction synchronization",
-          "Financial analytics",
-          "Secure data handling"
-        ]
-      },
-      {
-        "name": "Learning Service",
-        "port": 3004,
-        "purpose": "Educational content and progress tracking",
-        "technologies": ["NestJS", "TypeORM", "PostgreSQL"],
-        "features": [
-          "Course content management",
-          "Learning progress tracking",
-          "Achievement system",
-          "Personalized learning paths",
-          "Progress analytics"
-        ]
-      },
-      {
-        "name": "Notification Service",
-        "port": 3005,
-        "purpose": "Multi-channel notification delivery",
-        "technologies": ["NestJS", "TypeORM", "PostgreSQL", "WebSocket", "Bull"],
-        "features": [
-          "In-app notifications",
-          "Email notifications",
-          "SMS notifications",
-          "Push notifications",
-          "Real-time WebSocket delivery",
-          "Notification preferences"
-        ]
-      }
-    ],
-    "shared": {
-      "database": "PostgreSQL with TypeORM",
-      "cache": "Redis",
-      "message_queue": "Bull (Redis-based)",
-      "logging": "Winston structured logging",
-      "containerization": "Docker",
-      "orchestration": "Kubernetes"
-    }
-  },
-  "api_endpoints": {
-    "auth_service": {
-      "POST /auth/register": "User registration",
-      "POST /auth/login": "User authentication",
-      "GET /auth/google": "Google OAuth initiation",
-      "GET /auth/google/callback": "OAuth callback handling",
-      "GET /auth/dashboard": "User dashboard data",
-      "GET /auth/google/calendar/auth": "Calendar authorization",
-      "GET /auth/google/calendar/events": "Calendar events retrieval",
-      "POST /auth/google/calendar/events": "Create calendar event",
-      "POST /auth/upload/avatar": "Upload user avatar",
-      "DELETE /auth/upload/avatar": "Delete user avatar"
-    },
-    "health_service": {
-      "GET /health/dashboard": "Health dashboard data",
-      "GET /health/fitbit/auth": "Fitbit OAuth initiation",
-      "GET /health/fitbit/callback": "Fitbit OAuth callback",
-      "GET /health/fitbit/data": "Fitbit health data",
-      "GET /health/fitbit/activities": "Activity data",
-      "GET /health/fitbit/sleep": "Sleep data",
-      "GET /health/fitbit/heart": "Heart rate data",
-      "POST /health/vitals": "Manual vital signs entry"
-    },
-    "finance_service": {
-      "GET /finance/accounts": "Linked financial accounts",
-      "GET /finance/transactions": "Transaction history",
-      "GET /finance/plaid/auth": "Plaid Link token",
-      "POST /finance/plaid/webhook": "Plaid webhook handling"
-    },
-    "learning_service": {
-      "GET /learning/courses": "Available courses",
-      "GET /learning/courses/:id": "Course details",
-      "GET /learning/progress": "User learning progress",
-      "POST /learning/progress": "Update learning progress",
-      "GET /learning/analytics": "Learning analytics"
-    },
-    "notification_service": {
-      "GET /notifications": "User notifications",
-      "POST /notifications": "Create notification",
-      "PUT /notifications/:id/read": "Mark as read",
-      "DELETE /notifications/:id": "Delete notification",
-      "GET /notifications/preferences": "Notification preferences",
-      "PUT /notifications/preferences": "Update preferences"
-    },
-    "api_gateway": {
-      "GET /health": "Gateway health check",
-      "GET /status": "Service status overview",
-      "GET /api/dashboard": "Aggregated dashboard",
-      "GET /api/profile": "Complete user profile"
-    }
-  },
-  "database_schema": {
-    "users": {
-      "fields": [
-        "id (UUID, PK)",
-        "email (string, unique)",
-        "passwordHash (string)",
-        "fullName (string)",
-        "timezone (string, nullable)",
-        "avatar (string, nullable)",
-        "phoneNumber (string, nullable)",
-        "isActive (boolean)",
-        "role (string)",
-        "googleTokens (JSON, nullable)",
-        "fitbitTokens (JSON, nullable)",
-        "plaidTokens (JSON, nullable)",
-        "preferences (JSON, nullable)",
-        "createdAt (timestamp)",
-        "updatedAt (timestamp)",
-        "lastActiveAt (timestamp, nullable)"
-      ]
-    },
-    "vitals": {
-      "fields": [
-        "id (UUID, PK)",
-        "userId (UUID, FK)",
-        "type (string)",
-        "value (decimal)",
-        "unit (string)",
-        "timestamp (timestamp)",
-        "source (string, nullable)",
-        "metadata (JSON, nullable)"
-      ]
-    },
-    "transactions": {
-      "fields": [
-        "id (UUID, PK)",
-        "userId (UUID, FK)",
-        "accountId (string)",
-        "transactionId (string)",
-        "amount (decimal)",
-        "currency (string)",
-        "date (date)",
-        "description (string)",
-        "merchantName (string, nullable)",
-        "category (string, nullable)",
-        "location (JSON, nullable)"
-      ]
-    },
-    "courses": {
-      "fields": [
-        "id (UUID, PK)",
-        "title (string)",
-        "description (text)",
-        "category (string)",
-        "difficulty (string)",
-        "estimatedHours (number)",
-        "modules (JSON)",
-        "isActive (boolean)",
-        "thumbnailUrl (string, nullable)"
-      ]
-    },
-    "progress": {
-      "fields": [
-        "id (UUID, PK)",
-        "userId (UUID, FK)",
-        "courseId (UUID, FK)",
-        "moduleId (string, nullable)",
-        "lessonId (string, nullable)",
-        "progress (number)",
-        "timeSpent (number)",
-        "completed (boolean)",
-        "startedAt (timestamp, nullable)",
-        "completedAt (timestamp, nullable)"
-      ]
-    },
-    "notifications": {
-      "fields": [
-        "id (UUID, PK)",
-        "userId (UUID, FK)",
-        "title (string)",
-        "message (text)",
-        "type (string)",
-        "priority (string)",
-        "read (boolean)",
-        "readAt (timestamp, nullable)",
-        "channels (JSON, nullable)",
-        "deliveryStatus (JSON, nullable)",
-        "expiresAt (timestamp, nullable)"
-      ]
-    }
-  },
-  "third_party_integrations": {
-    "google_oauth": {
-      "purpose": "User authentication and Google services access",
-      "scopes": ["openid", "profile", "email", "calendar"],
-      "token_storage": "Encrypted in database",
-      "refresh_logic": "Automatic token refresh"
-    },
-    "google_calendar": {
-      "purpose": "Calendar event management",
-      "scopes": ["calendar.readonly", "calendar.events"],
-      "features": ["Event retrieval", "Event creation", "Event updates"],
-      "rate_limits": "1 billion queries per day"
-    },
-    "fitbit": {
-      "purpose": "Health and fitness data",
-      "scopes": ["activity", "heartrate", "location", "nutrition", "profile", "settings", "sleep", "social", "weight"],
-      "data_types": ["Steps", "Heart rate", "Sleep", "Weight", "Activities"],
-      "rate_limits": "150 requests per hour per user"
-    },
-    "plaid": {
-      "purpose": "Banking and financial data",
-      "products": ["transactions"],
-      "environments": ["sandbox", "development", "production"],
-      "webhooks": ["Transaction updates", "Account changes"],
-      "security": "Bank-level encryption"
-    }
-  },
-  "background_jobs": {
-    "email_processor": {
-      "queue": "email",
-      "purpose": "Asynchronous email sending",
-      "retry_policy": "3 attempts with exponential backoff",
-      "templates": ["welcome", "password-reset", "notifications"]
-    },
-    "notification_processor": {
-      "queue": "notification",
-      "purpose": "Multi-channel notification delivery",
-      "channels": ["in_app", "email", "sms", "push"],
-      "priority_levels": ["low", "normal", "high", "urgent"]
-    },
-    "sync_processor": {
-      "queue": "sync",
-      "purpose": "Third-party data synchronization",
-      "services": ["fitbit", "plaid", "google"],
-      "schedules": ["Every 6 hours", "On-demand", "Webhook-triggered"]
-    }
-  },
-  "caching_strategy": {
-    "redis_ttl": {
-      "user_profiles": "5 minutes",
-      "dashboard_data": "5 minutes",
-      "api_responses": "5 minutes (Google), 1 hour (Fitbit)",
-      "rate_limits": "1 minute windows"
-    },
-    "cache_keys": {
-      "user:{userId}:profile": "User profile data",
-      "user:{userId}:dashboard": "Aggregated dashboard",
-      "thirdparty:{service}:{userId}:{endpoint}": "External API responses",
-      "ratelimit:{identifier}:{window}": "Rate limiting counters"
-    }
-  },
-  "security_features": {
-    "authentication": {
-      "jwt_tokens": "15-minute expiration",
-      "refresh_tokens": "30-day expiration",
-      "password_hashing": "bcrypt with salt rounds 12",
-      "oauth_integration": "Google OAuth 2.0"
-    },
-    "authorization": {
-      "role_based_access": "user, admin roles",
-      "resource_ownership": "User-scoped data access",
-      "api_permissions": "Endpoint-level access control"
-    },
-    "data_protection": {
-      "encryption_at_rest": "Database field encryption",
-      "https_only": "SSL/TLS encryption",
-      "input_validation": "Comprehensive DTO validation",
-      "xss_protection": "Input sanitization"
-    },
-    "rate_limiting": {
-      "global_limit": "1000 requests/minute",
-      "user_limit": "100 requests/minute",
-      "ip_limit": "50 requests/minute",
-      "burst_handling": "Token bucket algorithm"
-    }
-  },
-  "testing_suite": {
-    "unit_tests": {
-      "framework": "Jest",
-      "coverage_threshold": {
-        "branches": 70,
-        "functions": 75,
-        "lines": 80,
-        "statements": 80
-      },
-      "test_files": [
-        "auth.service.spec.ts",
-        "cache.service.spec.ts",
-        "background-job.service.spec.ts",
-        "google-calendar.service.spec.ts",
-        "fitbit.service.spec.ts",
-        "plaid.service.spec.ts",
-        "notification.service.spec.ts"
-      ]
-    },
-    "integration_tests": {
-      "e2e_tests": [
-        "auth.e2e-spec.ts"
-      ],
-      "database_tests": "TypeORM integration tests",
-      "api_tests": "Full request/response cycles"
-    },
-    "test_utilities": {
-      "mock_services": "Comprehensive service mocking",
-      "test_data_factories": "Consistent test data generation",
-      "database_cleaning": "Automatic test database cleanup"
-    }
-  },
-  "deployment_configuration": {
-    "docker": {
-      "multi_stage_builds": "Optimized production images",
-      "security": "Non-root users, minimal attack surface",
-      "health_checks": "Container health monitoring"
-    },
-    "kubernetes": {
-      "deployments": "Rolling updates with zero downtime",
-      "services": "Load balancing and service discovery",
-      "configmaps": "Environment-specific configuration",
-      "secrets": "Secure credential management"
-    },
-    "ci_cd": {
-      "github_actions": "Automated testing and deployment",
-      "quality_gates": "Linting, testing, security scanning",
-      "environments": "Development, staging, production"
-    }
-  },
-  "monitoring_observability": {
-    "health_checks": {
-      "endpoints": "GET /health on all services",
-      "database_connectivity": "Connection pool monitoring",
-      "external_services": "Third-party API availability"
-    },
-    "logging": {
-      "structured_logs": "Winston JSON formatting",
-      "log_levels": "debug, info, warn, error",
-      "correlation_ids": "Request tracing",
-      "centralized_collection": "ELK stack integration"
-    },
-    "metrics": {
-      "performance": "Response times, throughput",
-      "business": "User registrations, API usage",
-      "infrastructure": "CPU, memory, disk usage",
-      "errors": "Error rates and types"
-    },
-    "alerting": {
-      "critical": "Service downtime, data loss",
-      "warning": "High error rates, performance degradation",
-      "info": "Deployment events, configuration changes"
-    }
-  },
-  "performance_characteristics": {
-    "response_times": {
-      "authentication": "< 200ms",
-      "dashboard_aggregation": "< 500ms",
-      "api_endpoints": "< 200ms (cached), < 2s (API calls)",
-      "file_uploads": "< 5s for 5MB files"
-    },
-    "throughput": {
-      "api_gateway": "1000 requests/minute",
-      "auth_service": "500 requests/minute",
-      "data_services": "200 requests/minute per service"
-    },
-    "scalability": {
-      "horizontal_scaling": "Stateless services, database read replicas",
-      "cache_distribution": "Redis cluster support",
-      "load_balancing": "Kubernetes service load balancing"
-    }
-  },
-  "compliance_security": {
-    "data_protection": {
-      "gdpr_compliance": "Data minimization, consent management",
-      "ccpa_compliance": "Data subject rights, opt-out mechanisms",
-      "data_retention": "Configurable retention policies"
-    },
-    "security_standards": {
-      "owasp_top_10": "Input validation, XSS prevention, CSRF protection",
-      "oauth_2_0": "Secure token handling, scope management",
-      "encryption": "TLS 1.3, AES-256 encryption"
-    },
-    "audit_trail": {
-      "user_actions": "Authentication, data access logging",
-      "admin_actions": "Configuration changes, user management",
-      "security_events": "Failed logins, suspicious activity"
-    }
-  },
-  "future_enhancements": {
-    "graphql_api": "Flexible data fetching and aggregation",
-    "real_time_features": "WebSocket-based live updates",
-    "ai_ml_integration": "Personalized recommendations, insights",
-    "mobile_optimization": "Mobile-specific API optimizations",
-    "multi_tenant": "Organization-based data isolation",
-    "advanced_analytics": "Business intelligence and reporting"
-  }
+"project_overview": {
+"app_name": "LifeOS",
+"app_description": "LifeOS is a unified AI-powered personal operating system that consolidates a user's health, finances, productivity, learning, social calendar, and personalization into a single secure platform. It provides proactive suggestions, automation, contextual insights, and cross-domain actions (e.g., reschedule a meeting, propose a workout, re-balance investments) through secure integrations and a highly-personalized ML core.",
+"target_audience": [
+"Professionals (25-55) who want to optimize productivity and wellbeing",
+"Busy parents seeking family organization and health tracking",
+"Students who want personalized learning paths and study scheduling",
+"SMB owners looking to centralize workflows across tools",
+"Enterprise HR/wellness programs offering productivity and health tools to employees"
+],
+"core_objectives": [
+"Provide a single-pane-of-glass for life's routines and decisions",
+"Deliver high-value AI recommendations that increase user retention and reliance",
+"Create a privacy-first architecture that is enterprise-grade",
+"Monetize via subscription tiers, enterprise licensing, and integrations",
+"Be cross-platform (mobile, web, wearables) with high performance and accessibility"
+],
+"key_features": [
+"AI Personal Assistant (scheduling, suggestions, automations)",
+"Health & Wearables integration (sleep, HR, steps, nutrition)",
+"Financial aggregation & insights (budgeting, savings goals, investment suggestions)",
+"Learning engine (micro-courses, spaced repetition, goal tracking)",
+"Productivity suite (task manager, email summarization, quick actions)",
+"Social & network recommendations (connect people with shared goals)",
+"Privacy controls and data export",
+"Extensible plugin/API marketplace for third-party integrations"
+],
+"success_metrics": [
+"DAU/MAU ratio >= 30%",
+"Day-7 retention >= 40% for premium users",
+"Average revenue per user (ARPU) target: $6/month in year-1",
+"Net Promoter Score (NPS) >= 50 within year-2",
+"Monthly churn < 3% for paid tier",
+"Enterprise conversion: 3 pilot contracts per quarter after product-market fit"
+]
+},
+"system_architecture": {
+"overall_architecture_diagram_description": "A hybrid microservices architecture with Next.js (React) frontend (SPA with route-level SSR for SEO), a GraphQL Gateway + REST microservices backend, a central event bus for asynchronous communication (Kafka), and a data plane composed of PostgreSQL for relational data, MongoDB for unstructured data, Redis for caching/session storage, and S3-compatible object store for assets. AI inference services (vector DB + model-serving) are isolated into an inference cluster with autoscaling. Authentication via OAuth2.0 / OIDC and user data isolation per tenant (for enterprise). CI/CD pipelines automate build/test/deploy to Kubernetes clusters (EKS/GKE/AKS), with Canary/Blue-Green deploys.",
+"client_side": {
+"architecture_type": "Progressive Web App (PWA) with Single Page Application (SPA) experience, server-side rendering (SSR) for public pages and SEO-critical routes, client-side hydration for interactive flows",
+"state_management": "Primary: React Query (TanStack Query) for server state and caching with optimistic updates; Secondary: Zustand for local UI state; use of SWR patterns for revalidation; centralized short-lived in-memory store for ephemeral AI session state. State normalization via entity adapters. Persist select UI state to IndexedDB using localForage (e.g., drafts, offline queues).",
+"routing_strategy": "Filesystem-based routing with dynamic nested routes. Public routes use SSR, authenticated dashboard routes use client-side routing with route guards. Deep linking: support for shareable UX state via encoded query JSON. Route transitions animated with Framer Motion.",
+"caching_strategy": "Multi-layer: HTTP caching with cache-control headers and ETags; CDN caching (edge) for static assets; client-side persistent cache using React Query with stale-while-revalidate; IndexedDB for offline priority data; image optimization and AVIF/WebP fallbacks; eviction strategy: LRU for local caches with max size defined (50MB)."
+},
+"server_side": {
+"architecture_pattern": "Hybrid Microservices with API Gateway pattern. Core services: auth-service, user-profile-service, health-ingest-service, finance-aggregator-service, learning-service, notification-service, ai-inference-service, analytics-service. A GraphQL gateway aggregates microservices where appropriate; REST endpoints for internal microservice communication and third-party integrations.",
+"service_dependencies": [
+{
+"service": "auth-service",
+"description": "Handles OIDC/OAuth2 flows, JWT issuance, refresh tokens, multi-factor auth, account recovery."
+},
+{
+"service": "user-profile-service",
+"description": "Manages user metadata, preferences, role/permission mappings, and user privacy controls."
+},
+{
+"service": "health-ingest-service",
+"description": "Receives and normalizes data from wearable providers and health APIs; processes streams into standardized time-series."
+},
+{
+"service": "finance-aggregator-service",
+"description": "Connects to Plaid-like providers for account aggregation, normalizes transactions, runs categorization models."
+},
+{
+"service": "ai-inference-service",
+"description": "Hosts LLMs, RAG pipelines, vector DB for embeddings (e.g., Milvus/FAISS/RedisVector), and manages per-user context windows and model selection."
+},
+{
+"service": "notification-service",
+"description": "Push notifications, emails, SMS (via Twilio or equivalent). Handles scheduling and delivery guarantees."
+},
+{
+"service": "analytics-service",
+"description": "Event ingestion pipeline (Kafka), processing/ETL to data warehouse (Snowflake/BigQuery) for product analytics and ML training."
+}
+],
+"data_flow_diagram": "User actions (web/mobile) -> CDN -> API Gateway -> GraphQL/REST endpoints -> services update DB (Postgres/Mongo) and emit events to Kafka -> consumer services (analytics, ML training ingest) -> AI inference service queries vector DB for context -> recommendations returned to API Gateway -> client receives suggestion. Third-party APIs (wearables, banks) feed external events via webhook endpoints to ingest services.",
+"scalability_approach": "Kubernetes orchestration with Horizontal Pod Autoscalers (HPA) and Cluster Autoscaler. Stateless services scale via HPA; stateful sets for database replicas with read-replicas for Postgres. Use of sharding for vector DB when needed. Use of autoscaling inference clusters with GPU/CPU mix (e.g., spot instances for cost). Partitioning tenancy (multi-tenant with per-tenant resource quotas). Adopt circuit breakers and bulkheads for fault isolation (e.g., Kuma/Linkerd service mesh for observability and traffic shaping)."
+},
+"data_architecture": {
+"database_design": "Primary relational store: PostgreSQL 15 for transactional data (users, subscriptions, tasks, schedule); Time-series and high-volume logs stored in ClickHouse for analytics; MongoDB (or Cosmos DB) for flexible documents (session snapshots, AI conversation history), with retention policies; Vector DB for embeddings (Milvus v2 / RedisVector) storing per-user vectors with metadata; Object storage: S3-compatible (MinIO or AWS S3) for files/avatars/backups.",
+"data_flow": "Ingress -> Validation -> Normalization -> Persist to appropriate store -> Emit event to Kafka -> Consumers process (analytics, model training, alerts) -> Archive raw payloads to cold storage every 30 days.",
+"storage_strategy": "Hot data (last 90 days) on high-IO SSD-backed storage; warm data (90-365 days) moved to larger SSD-backed nodes; cold data (>1 year) archived to object storage with lifecycle policies. Use of lifecycle rules to delete or anonymize PII after retention windows in compliance with policies.",
+"backup_recovery_strategy": "Daily logical backups (pg_dump) and continuous WAL shipping for Postgres with point-in-time recovery (PITR) retention of 30 days. Snapshot backups for MongoDB replica sets every 6 hours and weekly snap-to-S3 for 1-year retention. Test restore procedures quarterly via automated DR runbooks; RTO < 4 hours for core DB, RPO < 15 minutes using WAL/replication for critical services."
+}
+},
+"technology_stack": {
+"frontend": {
+"framework": "React 18.2.0 with Next.js 13.3 (App Router pattern)",
+"state_management": "React Query (TanStack Query) v5 for server state; Zustand v4 for local state",
+"styling_framework": "Tailwind CSS v4 (atomic utility-first)",
+"ui_component_library": "shadcn/ui (customized) and Radix primitives for accessibility",
+"build_tools": [
+"Vite 5 for local dev builds",
+"Esbuild for fast bundling",
+"SWC for compilation where applicable"
+],
+"testing_framework": "Vitest v1.2 for unit tests; Testing Library (React Testing Library) v14 for component tests",
+"additional_libraries": [
+{ "name": "Framer Motion", "version": "8.x", "purpose": "Page and micro-interactions animations" },
+{ "name": "React Hook Form", "version": "7.x", "purpose": "High-performance form handling" },
+{ "name": "date-fns", "version": "2.x", "purpose": "Date manipulation and localization" },
+{ "name": "localforage", "version": "1.x", "purpose": "IndexedDB/LocalStorage abstraction for offline persistence" },
+{ "name": "i18next", "version": "23.x", "purpose": "Internationalization support" }
+]
+},
+"backend": {
+"runtime_environment": "Node.js 20.x (LTS)",
+"framework": "NestJS 10.x for structured microservices; Apollo Server 4.x for GraphQL gateway",
+"authentication_library": "Keycloak (self-hosted) or Auth0 for hosted OIDC/OAuth2 with custom adapters; use openid-client and passport for local integrations",
+"api_specification": "GraphQL (primary for internal/aggregated queries) + REST for webhook/third-party integrations",
+"database": "PostgreSQL 15",
+"orm_odm": "Prisma ORM 5.x for Postgres; Mongoose 7.x for MongoDB where necessary",
+"caching_solution": "Redis 7.x for session storage, rate limiting, and ephemeral caching; Redis streams for lightweight eventing",
+"queue_system": "Apache Kafka for event streaming; RabbitMQ for job queues where exactly-once is non-critical",
+"additional_services": [
+{ "service": "Milvus", "version": "2.x", "purpose": "Vector DB for embeddings and nearest-neighbor search" },
+{ "service": "TorchServe/KServe", "version": "latest stable", "purpose": "Model serving (fine-tuned transformer endpoints)" },
+{ "service": "Celery-like Worker", "version": "custom Node worker using BullMQ", "purpose": "Background jobs and scheduled tasks" }
+]
+},
+"devops_infrastructure": {
+"hosting_platform": "Primary: AWS (EKS, S3, RDS, ElastiCache, ECR), Multi-cloud ready with Terraform IaC. Secondary support for GCP/Azure.",
+"ci_cd_pipeline": "GitHub Actions with monorepo workflows: lint -> unit tests -> build -> security scan -> integration tests -> push to staging -> e2e tests -> canary deploy -> promote to production. Container image scanning (Trivy), IaC scanning (Checkov).",
+"containerization": "Docker Engine 24.x and OCI images; images built with buildkit",
+"monitoring_tools": [
+"Prometheus for metrics",
+"Grafana for dashboards",
+"OpenTelemetry for distributed tracing"
+],
+"logging_solution": "Centralized ELK/Opensearch stack (Filebeat -> Logstash -> Elasticsearch/OpenSearch -> Kibana) with retention rules",
+"performance_monitoring": "Datadog APM or New Relic for detailed traces and SLO dashboards"
+}
+},
+"ui_ux_specifications": {
+"design_system": {
+"color_palette": {
+"primary_colors": [
+{ "name": "LifeBlue", "hex": "#275AF4", "rgb": "39,90,244", "usage": "Primary CTAs, links, active states" },
+{ "name": "LifePurple", "hex": "#6B49FF", "rgb": "107,73,255", "usage": "Highlights, secondary CTAs, gradients" }
+],
+"secondary_colors": [
+{ "name": "Aqua", "hex": "#00C2A8", "rgb": "0,194,168", "usage": "Success accents, positive badges" },
+{ "name": "SunYellow", "hex": "#FFD24C", "rgb": "255,210,76", "usage": "Warning accents, gamification points" }
+],
+"neutral_colors": [
+{ "name": "Neutral900", "hex": "#0F1724", "rgb": "15,23,36", "usage": "Primary text" },
+{ "name": "Neutral700", "hex": "#334155", "rgb": "51,65,85", "usage": "Secondary text" },
+{ "name": "Neutral100", "hex": "#F8FAFC", "rgb": "248,250,252", "usage": "Backgrounds and cards" }
+],
+"semantic_colors": [
+{ "name": "Success", "hex": "#10B981", "usage": "Success messages" },
+{ "name": "Warning", "hex": "#F59E0B", "usage": "Warnings" },
+{ "name": "Error", "hex": "#EF4444", "usage": "Errors" },
+{ "name": "Info", "hex": "#0EA5E9", "usage": "Informational banners" }
+]
+},
+"typography_scale": {
+"font_family": "Inter (primary), system fallback: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+"font_weights": { "light": 300, "normal": 400, "medium": 500, "semibold": 600, "bold": 700 },
+"type_scale": {
+"h1": { "font_size": "40px", "line_height": "48px", "letter_spacing": "-0.02em" },
+"h2": { "font_size": "32px", "line_height": "40px", "letter_spacing": "-0.02em" },
+"h3": { "font_size": "24px", "line_height": "32px", "letter_spacing": "-0.01em" },
+"h4": { "font_size": "20px", "line_height": "28px", "letter_spacing": "0" },
+"h5": { "font_size": "16px", "line_height": "24px", "letter_spacing": "0" },
+"body": { "font_size": "14px", "line_height": "20px", "letter_spacing": "0" },
+"caption": { "font_size": "12px", "line_height": "16px", "letter_spacing": "0.01em" }
+}
+},
+"spacing_system": {
+"base_unit": 8,
+"spacing_scale": {
+"xs": 4,
+"sm": 8,
+"md": 16,
+"lg": 24,
+"xl": 32,
+"xxl": 48
+}
+},
+"border_radius": {
+"scale": { "sm": "4px", "md": "8px", "lg": "12px", "xl": "16px", "full": "9999px" }
+},
+"shadows": {
+"elevation_levels": {
+"level0": "none",
+"level1": "0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)",
+"level2": "0 4px 8px rgba(16,24,40,0.06), 0 2px 6px rgba(16,24,40,0.08)",
+"level3": "0 8px 24px rgba(16,24,40,0.08)"
+}
+},
+"iconography": {
+"icon_library": "Lucide icons set as base + custom SVGs",
+"custom_icons": [
+"lifeos-ecosystem (circular nodes)",
+"ai-brain (simplified neuron)",
+"wallet-aggregate",
+"sleep-tracker",
+"work-timer",
+"learning-path"
+]
+}
+},
+"component_library": {
+"atoms": [
+{ "name": "Button", "variants": ["primary", "secondary", "ghost", "icon"], "props": ["size", "disabled", "loading", "aria-label"], "pixel_spec": { "height": "40px", "padding": "0 16px" } },
+{ "name": "Input", "variants": ["text", "password", "search", "number"], "props": ["value", "placeholder", "error", "leadingIcon"], "pixel_spec": { "height": "40px", "font_size": "14px" } },
+{ "name": "Avatar", "props": ["size", "status"], "pixel_spec": { "small": "24px", "medium": "40px", "large": "64px" } },
+{ "name": "Badge", "props": ["type", "count"] }
+],
+"molecules": [
+{ "name": "SearchBar", "composition": ["Input", "Button", "Dropdown"], "behavior": "Typeahead with debounce 250ms; max suggestions 10" },
+{ "name": "ProfileCard", "composition": ["Avatar", "Text", "Button"], "pixel_spec": { "width": "320px", "padding": "16px" } }
+],
+"organisms": [
+{ "name": "DashboardHeader", "composition": ["Logo", "SearchBar", "Notifications", "ProfileMenu"], "height": "72px" },
+{ "name": "AgendaPanel", "composition": ["DatePicker", "TaskList", "QuickAdd"], "width_range": "min 320px, max 640px" }
+],
+"templates": [
+{ "name": "AuthPage", "regions": ["left-illustration", "right-auth-form"], "layout_grid": "two-column 1:1 on desktop; single stacked on mobile" },
+{ "name": "MainDashboard", "regions": ["nav", "main", "right-rail"], "grid": "12-column responsive grid" }
+]
+},
+"page_specifications": {
+"total_pages": 18,
+"pages": [
+{
+"page_id": "landing_home",
+"page_name": "Marketing Landing",
+"page_description": "Public landing and marketing pages with SEO content and signup funnels.",
+"page_route": "/",
+"required_authentication": false,
+"layout_type": "SSR landing -> CSR for interactive widgets",
+"components": [
+{ "component": "Hero", "position": { "x": 0, "y": 0 }, "props": { "title": "LifeOS", "subtitle": "One app for everything", "cta": "Get Started" } },
+{ "component": "FeatureGrid", "position": { "x": 0, "y": 380 }, "props": { "columns": 3 } }
+],
+"responsive_behavior": { "breakpoints": { "mobile": 0, "tablet": 768, "desktop": 1024 }, "stack_behavior": "collapse to one-column under 768px" },
+"loading_states": "Skeleton placeholders for hero and cards; spinner for dynamic pricing",
+"error_states": "Friendly 500 message with 'Try again' and feedback telemetry",
+"empty_states": "Marketing CTA encouraging signups"
+},
+{
+"page_id": "auth_signin",
+"page_name": "Sign In",
+"page_description": "Authentication entry with email/password, SSO, and MFA",
+"page_route": "/signin",
+"required_authentication": false,
+"layout_type": "Centered form card",
+"components": [
+{ "component": "SignInForm", "position": { "x": 280, "y": 220 }, "props": { "fields": ["email", "password"], "mfa": true } }
+],
+"responsive_behavior": "Form full-width under 480px",
+"loading_states": "Inline spinner in submit button",
+"error_states": "Field-level validation messages with focus management",
+"empty_states": "N/A"
+},
+{
+"page_id": "dashboard_main",
+"page_name": "Main Dashboard",
+"page_description": "Personalized dashboard summarizing health, tasks, finances, and suggestions.",
+"page_route": "/app/dashboard",
+"required_authentication": true,
+"layout_type": "Three-column responsive grid (nav 72px, main 1fr, right-rail 320px)",
+"components": [
+{ "component": "AgendaPanel", "position": { "column": 2, "row": 1 }, "props": { "defaultRange": "today" } },
+{ "component": "AIRecommendations", "position": { "column": 2, "row": 2 }, "props": { "maxItems": 5 } },
+{ "component": "HealthSummaryCard", "position": { "column": 3 }, "props": { "compact": true } }
+],
+"responsive_behavior": "Right-rail collapses into bottom drawer on small screens",
+"loading_states": "Cards show shimmer; each card times out after 10s to show retry option",
+"error_states": "Per-card retry button; global toast for critical failures",
+"empty_states": "Guided onboarding CTA to connect sources"
+},
+{
+"page_id": "profile_settings",
+"page_name": "Settings & Privacy",
+"page_description": "Manage account, privacy, connected apps, and billing.",
+"page_route": "/app/settings",
+"required_authentication": true,
+"layout_type": "Tabbed settings page",
+"components": [
+{ "component": "ConnectedAppsList", "position": { "tab": "integrations" }, "props": {} },
+{ "component": "SubscriptionCard", "position": { "tab": "billing" }, "props": {} }
+],
+"responsive_behavior": "Tabs stack on mobile",
+"loading_states": "Individual section skeletons",
+"error_states": "Inline validation; 'Contact support' CTA",
+"empty_states": "Show recommended integrations CTA"
+},
+{
+"page_id": "learning_path",
+"page_name": "Learning Hub",
+"page_description": "Personalized micro-courses and progress tracking.",
+"page_route": "/app/learn",
+"required_authentication": true,
+"layout_type": "List + detail view",
+"components": [
+{ "component": "CourseList", "position": { "column": 1 }, "props": { "filterable": true } },
+{ "component": "CoursePlayer", "position": { "column": 2 }, "props": { "autoplay": false } }
+],
+"responsive_behavior": "Player stacks below list on mobile",
+"loading_states": "Module skeleton placeholders",
+"error_states": "Retry module load",
+"empty_states": "Show suggested course to start with"
+}
+]
+},
+"user_flows": {
+"onboarding_flow": "1) Sign up with email or SSO -> 2) Email verification -> 3) Quick preference survey (3 screens: focus areas, daily schedule, privacy level) -> 4) Connect primary integrations (calendar, health, bank) with guided OAuth/redirects -> 5) Initial AI scan (consent prompt) -> 6) Home tour and first suggested action -> 7) Offer to upgrade to trial premium",
+"authentication_flow": "1) User reaches protected route -> 2) Redirect to sign-in -> 3) Enter credentials or SSO -> 4) If MFA enabled, send challenge (TOTP or push) -> 5) Upon success, issue short-lived access token (JWT, 15 min) + refresh token (rotating), store refresh token in secure httpOnly cookie with SameSite=strict, and redirect back to requested route.",
+"main_workflow": "1) Background sync of connected apps -> 2) Aggregate events to user timeline -> 3) AI scheduler suggests actions -> 4) User accepts/edits/snoozes suggestion -> 5) Action executed (e.g., calendar update, email draft, payment instruction) with audit log and undo window (10 mins) -> 6) System learns and updates personalization model.",
+"error_handling_flow": "1) Detect error (API timeout, 4xx/5xx) -> 2) Retry policy: exponential backoff (times: 1s, 2s, 4s, 8s; max 3 retries) for transient errors -> 3) If still failing, show user-friendly message with error code and 'Try again' and send diagnostic telemetry. For critical failures, trigger alert to on-call."
+},
+"interaction_design": {
+"animations": {
+"micro_animations": [
+{ "element": "CTA hover", "spec": "scale(1.03) over 120ms with easing cubic-bezier(.2,.8,.2,1)" },
+{ "element": "Badge pop", "spec": "translateY(-6px) + opacity from 0 -> 1 over 220ms" }
+],
+"page_transitions": [
+{ "type": "fade-left", "spec": "enter: opacity 0->1 translateX 12px over 260ms; exit: opacity 1->0 translateX -12px over 220ms" }
+],
+"loading_animations": [
+{ "element": "card-shimmer", "spec": "gradient shimmer moving left to right over 1200ms infinite" }
+]
+},
+"gestures_interactions": {
+"mobile_gestures": [
+{ "gesture": "swipe-right", "action": "complete task" },
+{ "gesture": "swipe-left", "action": "snooze task" },
+{ "gesture": "long-press", "action": "open quick-actions modal" }
+],
+"desktop_interactions": [
+{ "interaction": "keyboard shortcut 'g d'", "action": "go to dashboard" },
+{ "interaction": "drag-drop", "action": "reorder tasks or cards" }
+]
+},
+"feedback_mechanisms": {
+"toasts_notifications": "Non-blocking ephemeral toasts (3s default) with undo action where applicable. Critical errors require persistent toasts with 'dismiss' only.",
+"loading_indicators": "Inline spinners for small components (20px), progress bar at top (like Github) for global operations, skeletons for content heavy areas.",
+"error_messages": "Friendly content + machine-readable error code + action CTA. Field-level errors appear inline with ARIA live regions for accessibility."
+}
+},
+"accessibility": {
+"wcag_compliance": "WCAG 2.1 AA compliance across the platform (AAA targeted for marketing pages).",
+"keyboard_navigation": "All interactive components fully keyboard navigable (Tab order, Arrow-key lists, Esc to close modals). Provide keyboard shortcuts reference page and allow customization.",
+"screen_reader_support": "Use semantic HTML, ARIA roles, labels, and live regions. Complex widgets implement aria-activedescendant and role='listbox' where appropriate. Provide alt text for images and transcripts for audio content.",
+"color_contrast_requirements": "Minimum contrast ratio 4.5:1 for normal text, 3:1 for large text, ensure semantic colors meet contrast thresholds; provide theme toggle to high-contrast mode.",
+"focus_management": "Visible focus ring for all focusable elements (2px outline), focus trap for modals, auto-focus on form fields in dialogs with respect to user preferences."
+}
+},
+"backend_specifications": {
+"api_specification": {
+"api_type": "GraphQL (public gateway) + REST for webhooks and third-party integrations",
+"base_url": "[https://api.lifeos.com/v1](https://api.lifeos.com/v1)",
+"versioning_strategy": "Semantic versioning for REST endpoints (v1, v2). GraphQL follows schema versioning via field deprecation and a changelog; major schema changes gated by feature flags.",
+"authentication_mechanism": "OAuth2.0 / OIDC for SSO; JWT for client tokens with rotating refresh tokens; scopes-based auth for third-party API access; optional signed webhook secrets for inbound webhooks.",
+"rate_limiting": "Global: 1000 requests/min for paid tiers, 10000 requests/min for enterprise per token; per-endpoint rate limits applied for critical endpoints. Enforcement via Redis token buckets. 429 responses include 'Retry-After' header.",
+"endpoints": [
+{
+"endpoint_id": "graphql_gateway",
+"endpoint_path": "/graphql",
+"http_method": "POST",
+"description": "Unified GraphQL gateway exposing queries and mutations for client interactions",
+"authentication_required": true,
+"authorization_requirements": ["scope:user:read", "scope:user:write for mutations"],
+"request_parameters": [
+{ "name": "query", "type": "string", "required": true },
+{ "name": "variables", "type": "object", "required": false }
+],
+"request_body_schema": { "type": "object", "properties": { "query": { "type": "string" }, "variables": { "type": "object" } }, "required": ["query"] },
+"response_schema": { "type": "object", "properties": { "data": { "type": "object" }, "errors": { "type": "array" } } },
+"error_responses": [
+{ "code": 400, "description": "Bad request or validation error" },
+{ "code": 401, "description": "Unauthorized" },
+{ "code": 500, "description": "Internal server error" }
+],
+"caching_strategy": "Cache queries with persisted queries via CDN where queries are idempotent; set cache-control based on field directives",
+"timeout_settings": 15000
+},
+{
+"endpoint_id": "webhook_inbound",
+"endpoint_path": "/webhooks/:provider",
+"http_method": "POST",
+"description": "Receives events from third-party providers (wearables, banks).",
+"authentication_required": true,
+"authorization_requirements": ["provider:valid_signature"],
+"request_parameters": [
+{ "name": "provider", "type": "string", "required": true }
+],
+"request_body_schema": { "type": "object", "properties": { "event_type": { "type": "string" }, "payload": { "type": "object" } }, "required": ["event_type","payload"] },
+"response_schema": { "type": "object", "properties": { "status": { "type": "string" }, "received_at": { "type": "string", "format": "date-time" } } },
+"error_responses": [
+{ "code": 400, "description": "Malformed payload" },
+{ "code": 401, "description": "Invalid signature" }
+],
+"caching_strategy": "No caching; webhooks processed once with idempotency keys",
+"timeout_settings": 5000
+},
+{
+"endpoint_id": "user_profile_get",
+"endpoint_path": "/v1/users/:userId/profile",
+"http_method": "GET",
+"description": "Retrieve user profile and settings",
+"authentication_required": true,
+"authorization_requirements": ["user:self or admin:read"],
+"request_parameters": [
+{ "name": "userId", "type": "uuid", "required": true }
+],
+"request_body_schema": null,
+"response_schema": {
+"type": "object",
+"properties": {
+"id": { "type": "string", "format": "uuid" },
+"name": { "type": "string" },
+"email": { "type": "string", "format": "email" },
+"preferences": { "type": "object" },
+"connected_integrations": { "type": "array", "items": { "type": "object" } }
+}
+},
+"error_responses": [
+{ "code": 404, "description": "User not found" }
+],
+"caching_strategy": "Short TTL cache 60s for non-sensitive public fields; sensitive fields are not cached at CDN layer",
+"timeout_settings": 5000
+},
+{
+"endpoint_id": "tasks_create",
+"endpoint_path": "/v1/users/:userId/tasks",
+"http_method": "POST",
+"description": "Create task in user's agenda",
+"authentication_required": true,
+"authorization_requirements": ["user:self"],
+"request_parameters": [
+{ "name": "userId", "type": "uuid", "required": true }
+],
+"request_body_schema": {
+"type": "object",
+"properties": {
+"title": { "type": "string" },
+"due_at": { "type": "string", "format": "date-time" },
+"duration_minutes": { "type": "integer" },
+"context": { "type": "string" },
+"reminder": { "type": "object", "properties": { "type": { "type": "string" }, "offset_minutes": { "type": "integer" } } }
+},
+"required": ["title"]
+},
+"response_schema": {
+"type": "object",
+"properties": { "taskId": { "type": "string", "format": "uuid" }, "created_at": { "type": "string", "format": "date-time" } }
+},
+"error_responses": [
+{ "code": 400, "description": "Validation error" },
+{ "code": 429, "description": "Rate limit exceeded" }
+],
+"caching_strategy": "No caching",
+"timeout_settings": 8000
+},
+{
+"endpoint_id": "ai_suggestion",
+"endpoint_path": "/v1/ai/suggest",
+"http_method": "POST",
+"description": "Request AI-based suggestions (e.g., schedule optimizations, health tips).",
+"authentication_required": true,
+"authorization_requirements": ["scope:ai:use"],
+"request_parameters": [],
+"request_body_schema": {
+"type": "object",
+"properties": {
+"userId": { "type": "string", "format": "uuid" },
+"context": { "type": "string" },
+"maxResults": { "type": "integer", "default": 5 },
+"allowActions": { "type": "boolean", "default": true }
+},
+"required": ["userId", "context"]
+},
+"response_schema": {
+"type": "object",
+"properties": {
+"suggestions": {
+"type": "array",
+"items": {
+"type": "object",
+"properties": {
+"id": { "type": "string" },
+"type": { "type": "string" },
+"confidence": { "type": "number" },
+"payload": { "type": "object" }
+}
+}
+},
+"model_meta": { "type": "object" }
+}
+},
+"error_responses": [
+{ "code": 400, "description": "Invalid request" },
+{ "code": 429, "description": "Too many requests" },
+{ "code": 503, "description": "Model unavailable" }
+],
+"caching_strategy": "Cache short-lived suggestions (30s) if same context and user",
+"timeout_settings": 20000
+}
+]
+},
+"database_design": {
+"database_type": "Relational primary (Postgres) + Document (MongoDB) + Vector store",
+"database_schema": {
+"users": {
+"table": "users",
+"columns": {
+"id": { "type": "uuid", "constraints": "primary key, default gen_random_uuid()" },
+"email": { "type": "varchar(320)", "constraints": "unique, not null" },
+"password_hash": { "type": "varchar(255)", "constraints": "nullable (only for local auth)" },
+"name": { "type": "varchar(255)" },
+"locale": { "type": "varchar(10)", "default": "en-US" },
+"timezone": { "type": "varchar(64)", "default": "UTC" },
+"created_at": { "type": "timestamptz", "default": "now()" },
+"updated_at": { "type": "timestamptz", "default": "now()" }
+}
+},
+"tasks": {
+"table": "tasks",
+"columns": {
+"id": { "type": "uuid", "constraints": "primary key" },
+"user_id": { "type": "uuid", "constraints": "references users(id) on delete cascade" },
+"title": { "type": "varchar(512)" },
+"description": { "type": "text" },
+"status": { "type": "varchar(32)", "default": "pending" },
+"priority": { "type": "smallint", "default": 3 },
+"due_at": { "type": "timestamptz" },
+"duration_minutes": { "type": "int" },
+"created_at": { "type": "timestamptz", "default": "now()" },
+"updated_at": { "type": "timestamptz", "default": "now()" }
+}
+},
+"subscriptions": {
+"table": "subscriptions",
+"columns": {
+"id": { "type": "uuid", "constraints": "primary key" },
+"user_id": { "type": "uuid", "constraints": "references users(id)" },
+"plan": { "type": "varchar(64)" },
+"status": { "type": "varchar(32)" },
+"billing_customer_id": { "type": "varchar(128)" },
+"started_at": { "type": "timestamptz" },
+"ends_at": { "type": "timestamptz" }
+}
+},
+"integrations": {
+"table": "integrations",
+"columns": {
+"id": { "type": "uuid", "constraints": "primary key" },
+"user_id": { "type": "uuid" },
+"provider": { "type": "varchar(128)" },
+"provider_user_id": { "type": "varchar(256)" },
+"scopes": { "type": "jsonb" },
+"credentials_meta": { "type": "jsonb" },
+"created_at": { "type": "timestamptz", "default": "now()" }
+}
+},
+"ai_conversations": {
+"table": "ai_conversations",
+"columns": {
+"id": { "type": "uuid", "constraints": "primary key" },
+"user_id": { "type": "uuid" },
+"conversation_snapshot": { "type": "jsonb" },
+"embedding_ref": { "type": "varchar(256)" },
+"created_at": { "type": "timestamptz", "default": "now()" }
+}
+}
+},
+"indexes": [
+{ "table": "users", "columns": ["email"], "type": "btree", "name": "idx_users_email" },
+{ "table": "tasks", "columns": ["user_id", "status", "due_at"], "type": "btree", "name": "idx_tasks_user_status_due" },
+{ "table": "integrations", "columns": ["user_id", "provider"], "type": "btree", "name": "idx_integrations_user_provider" }
+],
+"relationships": [
+{ "from": "users.id", "to": "tasks.user_id", "type": "one-to-many" },
+{ "from": "users.id", "to": "subscriptions.user_id", "type": "one-to-many" },
+{ "from": "users.id", "to": "integrations.user_id", "type": "one-to-many" }
+],
+"migrations_strategy": "Migrations authored with Prisma Migrate; schema changes gated by feature flags; migration preview via CI; rolling migration approach with backfill jobs for large data transformations; apply migrations to staging, run integration tests, then to production with zero-downtime strategy using 'safe' migration patterns (no column drop without prior deprecation)."
+},
+"business_logic": {
+"core_algorithms": [
+{ "name": "schedule-optimizer", "description": "Constraint-satisfaction solver (hybrid heuristic + ILP) that considers user preferences, priorities, commute, and energy levels. Implementation details: initial greedy placement -> local search -> optional ILP for finalization with time budget 500ms per request." },
+{ "name": "transaction-categorizer", "description": "Gradient-boosted model (LightGBM) + rule-based fallback for transaction classification with explainable labels; retrain weekly with aggregated anonymized labeled data." },
+{ "name": "health-anomaly-detector", "description": "Time-series model (LSTM/Temporal Convolution) detecting outliers in HR/sleep with thresholds and contextual signals to reduce false positives." },
+{ "name": "recommendation-reranker", "description": "Learning-to-rank using user feedback signals and reinforcement learning signals for personalization." }
+],
+"validation_rules": [
+{ "scope": "input_validation", "spec": "All string inputs sanitized; enforce max lengths (title 512 chars, description 5000 chars). Use JSON Schema for request bodies." },
+{ "scope": "business_validation", "spec": "No overlapping calendar event insertion without explicit user override; budget overrun warnings if new expense predicted to exceed monthly budget by >10%." }
+],
+"workflow_engines": [
+{ "name": "user_workflow_engine", "spec": "State machine-based workflows for onboarding, with persistent state in MongoDB and transitions via events. Supports retries and compensating actions." }
+],
+"scheduled_tasks": [
+{ "id": "daily_digest_job", "cron": "0 7 * * * (user timezone)", "purpose": "Aggregate daily summary and push notification", "retry_policy": "exponential backoff up to 3 tries" },
+{ "id": "weekly_backup", "cron": "0 2 * * 0", "purpose": "Database snapshot to S3" }
+]
+},
+"authentication_authorization": {
+"authentication_flow": "User logs in via OIDC/SSO or email/password. On successful auth, issue JWT+refresh token pair. Use rotating refresh tokens and store token identifier server-side. Support for passwordless magic-link and device-based sessions (mobile push). MFA via TOTP (RFC6238) and WebAuthn for passkeys.",
+"user_roles": [
+{ "role": "end_user", "description": "Standard user with ability to manage own data" },
+{ "role": "admin", "description": "Platform admin to manage system-level configuration and monitor system" },
+{ "role": "enterprise_admin", "description": "Enterprise-level admin with visibility to tenant-level analytics and user management" },
+{ "role": "support_agent", "description": "Limited access to user tickets with redaction for PII" }
+],
+"permissions_matrix": {
+"resources": ["profile", "tasks", "subscriptions", "integrations", "ai_suggestions"],
+"permissions": {
+"end_user": { "profile": ["read","update"], "tasks": ["read","create","update","delete"], "subscriptions": ["read","update"], "integrations": ["read","create","delete"], "ai_suggestions": ["create","read"] },
+"admin": { "profile": ["read"], "tasks": ["read"], "subscriptions": ["read","update"], "integrations": ["read","delete"], "ai_suggestions": ["read","manage"] }
+}
+},
+"session_management": "httpOnly secure cookies for browser sessions with SameSite=strict; mobile apps store tokens in secure keystore. Session TTL: 15 minutes for access tokens, refresh tokens valid 14 days (rotated on use). Revoke list maintained in Redis with TTL equal to original token expiry to support immediate logout.",
+"password_policies": "Minimum 12 characters for local passwords, must include at least three of: uppercase, lowercase, numbers, symbols. Rate-limit failed attempts: 5 attempts per 15 minutes with exponential backoff and account lock after 10 attempts for 1 hour."
+},
+"third_party_integrations": {
+"external_apis": [
+{ "name": "Google Calendar", "purpose": "Calendar sync", "auth": "OAuth2", "rate_limits": "per Google policy", "retry_policy": "exponential with jitter" },
+{ "name": "Apple Health kit", "purpose": "Health data (iOS)", "auth": "Device permissions", "notes": "Data flows via mobile app to ingest-service" },
+{ "name": "Plaid (or alternative)", "purpose": "Bank account aggregation", "auth": "OAuth and tokenized credentials", "security": "PCI considerations for linked account tokens" }
+],
+"payment_gateways": [
+{ "name": "Stripe", "purpose": "Subscription billing", "integration_notes": "Use Stripe Connect for marketplace payments; implement webhooks for event handling; use Stripe Billing for interval charges." }
+],
+"social_media_integrations": [
+{ "name": "Twitter/X", "purpose": "Social ingestion for content curation", "auth": "OAuth2" },
+{ "name": "LinkedIn", "purpose": "Professional profile enrichment", "auth": "OAuth2" }
+],
+"analytics_services": [
+{ "name": "Segment", "purpose": "Event routing to analytics and data warehouse" },
+{ "name": "BigQuery", "purpose": "Data warehouse for aggregated analytics" }
+]
+}
+},
+"performance_requirements": {
+"core_web_vitals": {
+"lcp_threshold": 2500,
+"fid_threshold": 100,
+"cls_threshold": 0.1
+},
+"load_time_requirements": {
+"first_contentful_paint": 1000,
+"time_to_interactive": 2500,
+"largest_contentful_paint": 2500
+},
+"optimization_strategies": {
+"code_splitting": "Route-level code splitting using dynamic imports; vendor chunking; isolate large libraries (e.g., AI client libs) to separate lazy-loaded bundles.",
+"lazy_loading": "Images and heavy components lazy-loaded with intersection observer, preload critical assets, use 'priority' attribute for hero images.",
+"caching_strategies": "Edge caching for static assets via CDN (TTL 30d), Cache-Control for API responses where safe, service worker for offline caching of last-viewed pages.",
+"compression_techniques": "Gzip and Brotli compression for HTTP responses; image compression to WebP/AVIF; vector assets as SVG; precompress build assets and serve from CDN."
+}
+},
+"security_specifications": {
+"data_protection": {
+"encryption_strategies": [
+{ "scope": "at-rest", "spec": "AES-256 encryption for database backups and S3 objects; RDS-native encryption for DB volumes" },
+{ "scope": "in-transit", "spec": "TLS 1.3 for all external and internal service-to-service traffic; mutual TLS for internal services where required" },
+{ "scope": "key_management", "spec": "KMS-managed keys (AWS KMS/HSM) with key rotation policies every 90 days" }
+],
+"data_masking": [
+{ "scope": "PII", "spec": "Mask sensitive fields at rest in logs and UIs (e.g., show only last 4 digits of account numbers), tokenization for payment info." }
+],
+"secure_data_transmission": "All APIs enforce HTTPS; signed payloads for webhook calls; HSTS headers; CSP headers for front-end to mitigate XSS."
+},
+"vulnerability_prevention": {
+"owasp_top_10_mitigation": [
+{ "risk": "Injection", "mitigation": "Use parametrized queries via ORM (Prisma), input validation, and least-privilege DB roles" },
+{ "risk": "Broken Authentication", "mitigation": "Use OIDC + MFA, rotating refresh tokens, session revocation, secure cookie flags" },
+{ "risk": "Sensitive Data Exposure", "mitigation": "Encrypt sensitive fields, limit PII in logs, and apply RBAC" }
+],
+"input_validation": "All user inputs validated via JSON Schema and server-side validation. Use strong typing and sanitization libraries; reject oversized payloads with HTTP 413.",
+"sql_injection_prevention": "ORM use only (Prisma) and no string concatenation for SQL; read-only DB replicas for analytics to reduce risk.",
+"xss_prevention": "Escape outputs, use Content Security Policy (CSP), sanitize rich text inputs with a strict allowlist (DOMPurify) and store both sanitized HTML and original MD w/ user consent."
+},
+"compliance_requirements": {
+"gdpr_compliance": "Provide data export and deletion endpoints, data processing agreements, explicit consent flows for personal data processing, data breach notification procedures within 72 hours; appoint DPO if required by region.",
+"data_retention_policies": "Default retention: transactional data 7 years (configurable per enterprise), AI conversation history retained 1 year by default and user-configurable, logs retained 90 days in hot store, 1 year in cold store.",
+"privacy_policy_requirements": "Public-facing privacy policy describing data uses, third-party processors, user rights, opt-out mechanisms, and contact details. Implement transparent consent for AI usage and training opt-out options."
+}
+},
+"testing_strategy": {
+"unit_testing": {
+"coverage_requirements": 85,
+"testing_frameworks": [
+{ "name": "Vitest", "scope": "frontend unit tests" },
+{ "name": "Jest", "scope": "backend unit tests (services)", "note": "or use Vitest for Node where preferred" }
+],
+"test_cases": [
+{ "id": "ui_button_behavior", "description": "Button renders in all variants; fires onClick with correct args" },
+{ "id": "auth_token_rotation", "description": "Refresh token rotation updates stored token id and invalidates prior" }
+]
+},
+"integration_testing": {
+"testing_strategy": "Contract tests between gateway and microservices using Pact; run integration tests in ephemeral environments using Docker Compose or Kubernetes test namespaces.",
+"test_scenarios": [
+{ "name": "calendar_integration_flow", "steps": "Connect Google Calendar, create event in-app, verify event appears in Google Calendar", "success_criteria": "Event metadata match" },
+{ "name": "payment_flow", "steps": "Subscribe via Stripe checkout, verify webhook processes and subscription activates", "success_criteria": "Subscription state active" }
+]
+},
+"end_to_end_testing": {
+"testing_framework": "Playwright",
+"critical_user_journeys": [
+"Sign up -> Onboarding -> Connect Google Calendar -> Accept first AI suggestion",
+"Sign in -> Create task -> Mark task complete -> Verify analytics event"
+]
+},
+"performance_testing": {
+"load_testing_requirements": "Simulate 1000 concurrent users on core dashboard flows with 99th percentile response time < 800ms for API gateway; use k6 for load testing.",
+"stress_testing_requirements": "Identify breaking point by incrementally increasing load and observe recovery; ensure graceful degradation and circuit breaker activation."
+},
+"security_testing": {
+"penetration_testing": "Annual third-party penetration test covering web, mobile, APIs, and cloud infra; remediation plans tracked in backlog.",
+"vulnerability_scanning": "Automated SAST/DAST runs in CI (Snyk/OWASP ZAP) and container image scanning for CVEs with policies to block builds with critical vulnerabilities."
+}
+},
+"deployment_operations": {
+"environment_configurations": {
+"development": {
+"spec": "Local dev uses docker-compose for core services, mocked integrations for third parties, local Postgres and Redis; environment variables stored in .env.development.example; lower resource limits. Feature flags enabled for dev mode."
+},
+"staging": {
+"spec": "Mirror of production infra in a separate AWS account, running on EKS with smaller node pools; automated seeding of anonymized test data; CI deploys to staging on merge to main branch; end-to-end tests run against staging."
+},
+"production": {
+"spec": "High-availability EKS cluster across multiple AZs, managed RDS with read-replicas, Redis cluster with clustering enabled, multi-region read replicas for critical services after year-1. TLS termination at ALB or API Gateway. Monitoring and SLOs enabled, dedicated incident runbooks."
+}
+},
+"deployment_pipeline": {
+"build_process": "CI builds mono-repo packages, runs unit/test/lint, builds Docker images, pushes images to private registry, triggers canary deployment to staging, runs e2e tests, then triggers production deployment with canary percentage flow.",
+"deployment_strategy": "Canary followed by automatic gradual rollout with health checks; Blue-Green available for risky schema changes or major releases. Use feature flags (LaunchDarkly or Unleash) for gated rollouts.",
+"rollback_procedure": "Automatic rollback on health-check failure: revert to previous image tag and notify on-call. Manual rollback runbook with DB rollback caveats for non-backward migrations (requires compensating actions)."
+},
+"monitoring_alerting": {
+"application_monitoring": "Prometheus exporters exposed for each service; Grafana dashboards for error rates, latency percentiles, CPU/memory, request rates. SLOs defined: 99.9% availability for core APIs.",
+"error_tracking": "Sentry for error aggregation with source maps and user-context; alerting on new critical errors with automatic issue creation in Jira.",
+"performance_monitoring": "APM traces in Datadog or New Relic capturing end-to-end traces across services; recording slow queries and resource hotspots.",
+"alerting_rules": [
+{ "alert": "high_error_rate", "threshold": "error rate > 1% for 5 minutes", "escalation": "Slack -> PagerDuty" },
+{ "alert": "cpu_saturation", "threshold": "node CPU > 85% for 10 minutes", "escalation": "Ops team" }
+]
+}
+},
+"documentation_requirements": {
+"technical_documentation": {
+"api_documentation": "Auto-generated OpenAPI for REST endpoints and GraphQL schema explorer (GraphiQL/Apollo Sandbox). Include example requests/responses, authentication flows, rate limits, and SDKs (TypeScript, Python, mobile).",
+"architecture_documentation": "High-level architecture diagrams (Component, Sequence, Data flow) in PlantUML and draw.io; service catalogue and dependency graph; runbooks for on-call and DR.",
+"deployment_documentation": "CI/CD runbook, Kubernetes manifests/Helm charts, Terraform IaC docs with variables and secrets management, rollback step-by-step guide."
+},
+"user_documentation": {
+"user_guides": [
+{ "title": "Getting Started", "steps": ["Sign up", "Connect calendar", "Accept suggestion"] },
+{ "title": "Connecting Devices", "steps": ["Install mobile app", "Grant Health permissions", "Verify data ingestion"] }
+],
+"faq_section": [
+{ "q": "How do I delete my account?", "a": "Go to Settings > Privacy > Delete account. This will remove data after a 30-day grace period." },
+{ "q": "How is my data used for AI?", "a": "We use data to personalize suggestions; opt-out available under Settings > Privacy > AI Training" }
+],
+"help_center": "Searchable knowledge base with categories, troubleshooting guides, and contact forms. Include automated chatbot for common issues and ticket escalation."
+}
+},
+"project_timeline_milestones": {
+"development_phases": [
+{
+"phase_name": "Discovery & Requirements",
+"duration_weeks": 4,
+"deliverables": [
+"Detailed product requirements document (PRD)",
+"User personas and prioritized feature list",
+"Initial architecture diagrams and cost estimate"
+],
+"success_criteria": [
+"Stakeholder sign-off on PRD",
+"Top 10 user stories scoped and estimated"
+]
+},
+{
+"phase_name": "MVP Implementation (Core AI Assistant + Calendar + Tasks)",
+"duration_weeks": 12,
+"deliverables": [
+"Auth + user profile service",
+"Calendar integration (Google Calendar)",
+"Task CRUD and dashboard",
+"Basic AI suggestion endpoint (rule-based + RAG with small embeddings)",
+"Mobile PWA skeleton and responsive web UI",
+"CI/CD pipeline setup and staging environment"
+],
+"success_criteria": [
+"End-to-end sign-up and connect flow works",
+"AI suggestion returns meaningful suggestions in 80% of test cases",
+"Beta group of 500 users onboarded"
+]
+},
+{
+"phase_name": "Growth & Integrations",
+"duration_weeks": 12,
+"deliverables": [
+"Payment subscriptions (Stripe)",
+"Finance aggregator integration (Plaid)",
+"Wearables ingestion for health (Apple Health via mobile, Fitbit)",
+"Advanced ML pipelines and vector DB",
+"Referral and viral features"
+],
+"success_criteria": [
+"Conversion rate from free to paid >= 3%",
+"Integration reliability > 99%",
+"DAU > 10k"
+]
+},
+{
+"phase_name": "Scale & Enterprise",
+"duration_weeks": 16,
+"deliverables": [
+"Enterprise multi-tenant support with SSO",
+"SLA and compliance documentation (GDPR, SOC2 readiness)",
+"Auto-scaling inference cluster with GPU support",
+"Advanced personalization algorithms"
+],
+"success_criteria": [
+"First enterprise pilot deployed",
+"SLA 99.9% met",
+"Annual recurring revenue (ARR) target set"
+]
+}
+],
+"quality_gates": [
+"All unit tests pass and coverage >= 85%",
+"Security scan pass with no critical vulnerabilities",
+"Performance tests meet defined load thresholds",
+"Accessibility audit yields WCAG 2.1 AA compliance"
+],
+"release_schedule": {
+"alpha": { "date_offset_weeks": 16, "description": "Invite-only alpha for internal staff and 50 trusted testers" },
+"beta": { "date_offset_weeks": 28, "description": "Public beta with initial marketing and 500-2,000 users" },
+"public_launch": { "date_offset_weeks": 40, "description": "Public release with core features and paid plans" },
+"enterprise_launch": { "date_offset_weeks": 56, "description": "Enterprise features and compliance milestone completion" }
+}
+}
 }

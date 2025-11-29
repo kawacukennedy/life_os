@@ -1,3 +1,5 @@
+import { offlineQueue } from './offline'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface DashboardTile {
@@ -85,6 +87,12 @@ export class AuthAPI {
   }
 
   static async getAggregatedDashboard(): Promise<AggregatedDashboard> {
+    // Try cache first
+    const cached = await offlineQueue.getCachedApiResponse('dashboard')
+    if (cached) {
+      return cached
+    }
+
     // Call gateway aggregated dashboard
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE}/api/dashboard`, {
@@ -98,7 +106,12 @@ export class AuthAPI {
       throw new Error(`API request failed: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json()
+
+    // Cache the response
+    await offlineQueue.cacheApiResponse('dashboard', 'dashboard', data)
+
+    return data
   }
 
   static async login(credentials: { email: string; password: string }) {
@@ -171,6 +184,26 @@ export class AuthAPI {
   static async deleteAvatar(): Promise<void> {
     return this.request('/upload/avatar', {
       method: 'DELETE',
+    });
+  }
+
+  static async updateProfile(profileData: { fullName: string; email: string; timezone: string; language: string }) {
+    return this.request('/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  static async updatePreferences(preferences: { notifications: boolean; analytics: boolean; aiTraining: boolean }) {
+    return this.request('/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  }
+
+  static async completeOnboarding() {
+    return this.request('/onboarding/complete', {
+      method: 'POST',
     });
   }
 }

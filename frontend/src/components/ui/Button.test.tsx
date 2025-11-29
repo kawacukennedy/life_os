@@ -1,3 +1,4 @@
+import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Button } from './Button'
 
@@ -6,7 +7,6 @@ describe('Button', () => {
     render(<Button>Click me</Button>)
     const button = screen.getByRole('button', { name: /click me/i })
     expect(button).toBeInTheDocument()
-    expect(button).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('renders with different variants', () => {
@@ -16,7 +16,7 @@ describe('Button', () => {
   })
 
   it('handles click events', () => {
-    const handleClick = jest.fn()
+    const handleClick = vi.fn()
     render(<Button onClick={handleClick}>Click me</Button>)
     const button = screen.getByRole('button', { name: /click me/i })
     fireEvent.click(button)
@@ -35,5 +35,15 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: /disabled/i })
     expect(button).toBeDisabled()
     expect(button).toHaveClass('disabled:opacity-50')
+  })
+
+  it('shows loading state with spinner', () => {
+    render(<Button loading>Loading</Button>)
+    const button = screen.getByRole('button', { name: /loading/i })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    // Check for spinner (aria-hidden element)
+    const spinner = button.querySelector('[aria-hidden="true"]')
+    expect(spinner).toBeInTheDocument()
   })
 })

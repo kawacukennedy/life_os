@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import PWARegister from '@/components/PWARegister'
+import OfflineInitializer from '@/components/OfflineInitializer'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -39,6 +40,7 @@ export default function RootLayout({
               <GraphQLProvider>
                 <ToastProvider>
                   <PWARegister />
+                  <OfflineInitializer />
                   <LayoutWrapper>
                     {children}
                   </LayoutWrapper>
