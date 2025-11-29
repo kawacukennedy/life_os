@@ -35,6 +35,16 @@ export class User {
   @Column({ default: "user" })
   role: string;
 
+  // MFA settings
+  @Column({ nullable: true })
+  mfaSecret: string;
+
+  @Column({ default: false })
+  mfaEnabled: boolean;
+
+  @Column({ nullable: true })
+  backupCodes: string; // JSON array of backup codes
+
   // Integration tokens
   @Column({ type: "json", nullable: true })
   googleTokens: {

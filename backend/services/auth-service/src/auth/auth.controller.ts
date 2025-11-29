@@ -262,4 +262,32 @@ export class AuthController {
     await this.fileService.deleteAvatar(req.user.id);
     return { message: "Avatar deleted successfully" };
   }
+
+  // MFA Endpoints
+  @Post('mfa/setup')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Setup MFA', description: 'Generate MFA secret and QR code' })
+  async setupMFA(@Request() req) {
+    return this.authService.setupMFA(req.user.id);
+  }
+
+  @Post('mfa/enable')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Enable MFA', description: 'Verify and enable MFA' })
+  async enableMFA(@Request() req, @Body() body: { token: string }) {
+    return this.authService.enableMFA(req.user.id, body.token);
+  }
+
+  @Post('mfa/disable')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Disable MFA', description: 'Disable MFA for user' })
+  async disableMFA(@Request() req) {
+    return this.authService.disableMFA(req.user.id);
+  }
+
+  @Post('mfa/verify')
+  @ApiOperation({ summary: 'Verify MFA', description: 'Verify MFA token during login' })
+  async verifyMFA(@Body() body: { userId: string; token: string; backupCode?: string }) {
+    return this.authService.verifyMFA(body.userId, body.token, body.backupCode);
+  }
 }

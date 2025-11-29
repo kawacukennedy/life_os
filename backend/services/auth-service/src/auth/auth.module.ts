@@ -18,6 +18,7 @@ import { User } from "../users/user.entity";
 import { JwtStrategy } from "./jwt.strategy";
 import { GoogleStrategy } from "./google.strategy";
 import { LocalStrategy } from "./local.strategy";
+import { MFAService } from "./mfa.service";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { LocalStrategy } from "./local.strategy";
   controllers: [AuthController],
   providers: [
     AuthService,
+    MFAService,
     GoogleCalendarService,
     CacheService,
     BackgroundJobService,
