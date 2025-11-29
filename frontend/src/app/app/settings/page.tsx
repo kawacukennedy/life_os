@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
-import { useTheme } from '@/contexts/ThemeContext'
+import ThemeToggle from '@/components/ThemeToggle'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { AuthAPI } from '@/lib/api/auth'
 import { HealthAPI } from '@/lib/api/health'
@@ -475,23 +475,21 @@ export default function SettingsPage() {
                </div>
              </div>
 
-            {/* Appearance Settings */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Appearance</h2>
-              </div>
-              <div className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900">Theme</h3>
-                    <p className="text-sm text-gray-500">Choose your preferred theme</p>
-                  </div>
-                  <Button onClick={toggleTheme} variant="outline">
-                    {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
-                  </Button>
-                </div>
-              </div>
-            </div>
+             {/* Appearance Settings */}
+             <div className="bg-white shadow rounded-lg">
+               <div className="px-6 py-4 border-b border-gray-200">
+                 <h2 className="text-lg font-medium text-gray-900">Appearance</h2>
+               </div>
+               <div className="px-6 py-4">
+                 <div className="flex items-center justify-between">
+                   <div>
+                     <h3 className="text-sm font-medium text-gray-900">Theme</h3>
+                     <p className="text-sm text-gray-500">Choose your preferred theme</p>
+                   </div>
+                   <ThemeToggle />
+                 </div>
+               </div>
+             </div>
 
              {/* Notification Settings */}
              <div className="bg-white shadow rounded-lg">
