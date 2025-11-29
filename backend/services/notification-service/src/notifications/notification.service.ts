@@ -2,16 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType, NotificationChannel } from './notification.entity';
+import { PushSubscription } from './push-subscription.entity';
 import { NotificationGateway } from './notification.gateway';
 import * as nodemailer from 'nodemailer';
+import * as webpush from 'web-push';
+import * as twilio from 'twilio';
 
 @Injectable()
 export class NotificationService {
   private emailTransporter: nodemailer.Transporter;
+  private twilioClient: twilio.Twilio;
 
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
+    @InjectRepository(PushSubscription)
+    private pushSubscriptionRepository: Repository<PushSubscription>,
     private notificationGateway: NotificationGateway,
   ) {
     // Initialize email transporter
@@ -24,6 +30,19 @@ export class NotificationService {
         pass: process.env.SMTP_PASS,
       },
     });
+
+    // Initialize web-push
+    webpush.setVapidDetails(
+      'mailto:' + (process.env.VAPID_EMAIL || 'test@example.com'),
+      process.env.VAPID_PUBLIC_KEY || '',
+      process.env.VAPID_PRIVATE_KEY || '',
+    );
+
+    // Initialize Twilio
+    this.twilioClient = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN,
+    );
   }
 
   async createNotification(
@@ -63,6 +82,8 @@ export class NotificationService {
       await this.sendEmailNotification(savedNotification);
     } else if (channel === NotificationChannel.PUSH) {
       await this.sendPushNotification(savedNotification);
+    } else if (channel === NotificationChannel.SMS) {
+      await this.sendSMSNotification(savedNotification);
     }
 
     return savedNotification;
@@ -148,16 +169,122 @@ export class NotificationService {
   }
 
   private async sendPushNotification(notification: Notification): Promise<void> {
-    // In a real implementation, you would integrate with a push notification service
-    // like Firebase Cloud Messaging, OneSignal, or similar
-    console.log('Sending push notification:', {
-      userId: notification.userId,
-      title: notification.title,
-      message: notification.message,
+    const subscriptions = await this.pushSubscriptionRepository.find({
+      where: { userId: notification.userId, isActive: true },
     });
 
-    // Placeholder for push notification implementation
-    // This would typically involve calling a push service API
+    const payload = JSON.stringify({
+      title: notification.title,
+      body: notification.message,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: {
+        url: notification.actionUrl || '/',
+        notificationId: notification.id,
+      },
+    });
+
+    const results = await Promise.allSettled(
+      subscriptions.map(subscription =>
+        webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.p256dh,
+              auth: subscription.auth,
+            },
+          },
+          payload,
+        ),
+      ),
+    );
+
+    // Handle failed subscriptions (expired, etc.)
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error('Push notification failed:', result.reason);
+        // In production, mark subscription as inactive if it's expired
+        if (result.reason.statusCode === 410) {
+          this.pushSubscriptionRepository.update(subscriptions[index].id, {
+            isActive: false,
+          });
+        }
+      }
+    });
+  }
+
+  private async sendSMSNotification(notification: Notification): Promise<void> {
+    if (!process.env.TWILIO_PHONE_NUMBER) {
+      console.warn('Twilio phone number not configured, skipping SMS notification');
+      return;
+    }
+
+    try {
+      await this.twilioClient.messages.create({
+        body: `${notification.title}: ${notification.message}`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: notification.metadata?.phoneNumber || '+1234567890', // In real app, get from user profile
+      });
+    } catch (error) {
+      console.error('Failed to send SMS notification:', error);
+    }
+  }
+
+  // Push subscription management
+  async savePushSubscription(
+    userId: string,
+    subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+    userAgent?: string,
+  ): Promise<PushSubscription> {
+    // Check if subscription already exists
+    const existing = await this.pushSubscriptionRepository.findOne({
+      where: { userId, endpoint: subscription.endpoint },
+    });
+
+    if (existing) {
+      existing.p256dh = subscription.keys.p256dh;
+      existing.auth = subscription.keys.auth;
+      existing.isActive = true;
+      existing.userAgent = userAgent;
+      return this.pushSubscriptionRepository.save(existing);
+    }
+
+    const pushSubscription = this.pushSubscriptionRepository.create({
+      userId,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      userAgent,
+    });
+
+    return this.pushSubscriptionRepository.save(pushSubscription);
+  }
+
+  async removePushSubscription(userId: string, endpoint: string): Promise<void> {
+    await this.pushSubscriptionRepository.update(
+      { userId, endpoint },
+      { isActive: false },
+    );
+  }
+
+  async sendScheduledNotification(
+    userId: string,
+    title: string,
+    message: string,
+    scheduledTime: Date,
+    channel: NotificationChannel = NotificationChannel.PUSH,
+  ): Promise<Notification> {
+    // In production, use a job queue like Bull
+    const delay = scheduledTime.getTime() - Date.now();
+
+    if (delay > 0) {
+      setTimeout(() => {
+        this.createNotification(userId, title, message, NotificationType.INFO, channel);
+      }, delay);
+    }
+
+    // Create the notification record now
+    return this.createNotification(userId, title, message, NotificationType.INFO, channel);
   }
 
   async sendBulkNotification(

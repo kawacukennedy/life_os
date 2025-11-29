@@ -13,11 +13,12 @@ import { NotificationProcessor } from '../auth/notification.processor';
 import { NotificationController } from './notification.controller';
 import { NotificationGateway } from './notification.gateway';
 import { Notification } from './notification.entity';
+import { PushSubscription } from './push-subscription.entity';
 import { JwtStrategy } from '../auth/jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification]),
+    TypeOrmModule.forFeature([Notification, PushSubscription]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',

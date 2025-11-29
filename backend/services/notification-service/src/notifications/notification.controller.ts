@@ -87,4 +87,48 @@ export class NotificationController {
       body.channel,
     );
   }
+
+  // Push subscription management
+  @Post('push-subscription')
+  async savePushSubscription(
+    @Body() body: {
+      userId: string;
+      subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
+      userAgent?: string;
+    },
+  ) {
+    return this.notificationService.savePushSubscription(
+      body.userId,
+      body.subscription,
+      body.userAgent,
+    );
+  }
+
+  @Delete('push-subscription')
+  async removePushSubscription(
+    @Body() body: { userId: string; endpoint: string },
+  ) {
+    await this.notificationService.removePushSubscription(body.userId, body.endpoint);
+    return { success: true };
+  }
+
+  // Scheduled notifications
+  @Post('scheduled')
+  async sendScheduledNotification(
+    @Body() body: {
+      userId: string;
+      title: string;
+      message: string;
+      scheduledTime: string;
+      channel?: NotificationChannel;
+    },
+  ) {
+    return this.notificationService.sendScheduledNotification(
+      body.userId,
+      body.title,
+      body.message,
+      new Date(body.scheduledTime),
+      body.channel,
+    );
+  }
 }
