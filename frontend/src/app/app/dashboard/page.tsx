@@ -7,6 +7,8 @@ import { DashboardSkeleton } from '@/components/ui/CardSkeleton'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSwipeGesture } from '@/hooks/useSwipeGesture'
+import { useToast } from '@/contexts/ToastContext'
+import { useAnalytics } from '@/lib/analytics'
 import { HealthAPI, HealthSummary } from '@/lib/api/health'
 import { FinanceAPI, FinanceSummary } from '@/lib/api/finance'
 import { LearningAPI, LearningStats } from '@/lib/api/learning'
@@ -34,6 +36,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const { addToast } = useToast()
+  const { trackError, trackFeatureUsage } = useAnalytics()
 
   const userId = localStorage.getItem('userId') || 'user123'
   const { socket } = useWebSocket(userId)
@@ -243,9 +247,33 @@ export default function DashboardPage() {
 
       setSuggestions(suggestionsList.slice(0, 3))
 
+      // Track successful dashboard load
+      trackFeatureUsage('dashboard', 'load_success')
+
+      // Show success feedback for first load
+      if (!tiles.length) {
+        addToast({
+          title: 'Dashboard Updated',
+          description: 'Your personalized dashboard is ready!',
+          variant: 'success',
+          duration: 3000
+        })
+      }
+
     } catch (err) {
-      setError('Failed to load dashboard data')
+      const errorMessage = 'Failed to load dashboard data. Some features may be unavailable.'
+      setError(errorMessage)
       console.error('Error loading dashboard data:', err)
+
+      // Track error for analytics
+      trackError(err instanceof Error ? err : new Error(errorMessage), 'dashboard_load')
+
+      // Show user-friendly error toast
+      addToast({
+        title: 'Dashboard Error',
+        description: 'Unable to load some dashboard data. Please check your connections.',
+        variant: 'destructive'
+      })
     } finally {
       setLoading(false)
     }
