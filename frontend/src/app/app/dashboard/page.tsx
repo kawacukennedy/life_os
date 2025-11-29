@@ -16,6 +16,7 @@ import { AuthAPI, AggregatedDashboard } from '@/lib/api/auth'
 const AIAssistant = lazy(() => import('@/components/AIAssistant'))
 const CalendarEventsComponent = lazy(() => import('@/components/CalendarEvents'))
 const AIRecommendations = lazy(() => import('@/components/AIRecommendations'))
+const DashboardSkeleton = lazy(() => import('@/components/ui/CardSkeleton').then(mod => ({ default: mod.DashboardSkeleton })))
 
 interface DashboardTile {
   id: string

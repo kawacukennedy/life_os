@@ -1,6 +1,8 @@
-import LeftNav from '@/components/LeftNav'
+import { lazy, Suspense } from 'react'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor'
+
+const LeftNav = lazy(() => import('@/components/LeftNav'))
 
 export default function AppLayout({
   children,
@@ -12,7 +14,9 @@ export default function AppLayout({
 
   return (
     <div className="flex">
-      <LeftNav />
+      <Suspense fallback={<div className="w-64 bg-gray-100 animate-pulse" />}>
+        <LeftNav />
+      </Suspense>
       <main id="main-content" className="flex-1">
         {children}
       </main>
