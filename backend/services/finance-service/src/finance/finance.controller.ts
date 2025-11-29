@@ -71,4 +71,21 @@ export class FinanceController {
     await this.plaidService.handleWebhook(body, headers);
     return { received: true };
   }
+
+  // Aggregation and Sync
+  @Post('plaid/sync')
+  async syncPlaidTransactions(@Body() body: { userId: string; accessToken: string }) {
+    return this.financeService.syncPlaidTransactions(body.userId, body.accessToken);
+  }
+
+  @Get('insights')
+  async getSpendingInsights(@Query('userId') userId: string) {
+    return this.financeService.getSpendingInsights(userId);
+  }
+
+  @Post('categorize')
+  async categorizeTransaction(@Body() body: { description: string; amount: number }) {
+    const category = await this.financeService.categorizeTransaction(body.description, body.amount);
+    return { category };
+  }
 }
