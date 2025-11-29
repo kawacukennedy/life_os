@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import SearchBar from './SearchBar'
 
 const navItems = [
   { href: '/app/dashboard', label: 'Dashboard', icon: '🏠' },
@@ -23,6 +24,9 @@ export default function LeftNav() {
     >
       <div className="p-6">
         <h1 className="text-2xl font-bold text-primary-start">LifeOS</h1>
+        <div className="mt-4">
+          <SearchBar placeholder="Search..." className="w-full" />
+        </div>
       </div>
       <div className="px-4">
         <ul className="space-y-2" role="list">
