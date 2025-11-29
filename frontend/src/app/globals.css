@@ -1,21 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 243 244 246;
-    --foreground: 15 23 42;
+    /* Primary Colors */
+    --life-blue: 39 90 244;
+    --life-purple: 107 73 255;
+
+    /* Secondary Colors */
+    --aqua: 0 194 168;
+    --sun-yellow: 255 210 76;
+
+    /* Neutral Colors */
+    --neutral-900: 15 23 36;
+    --neutral-700: 51 65 85;
+    --neutral-100: 248 250 252;
+
+    /* Semantic Colors */
+    --success: 16 185 129;
+    --warning: 245 158 11;
+    --error: 239 68 68;
+    --info: 14 165 233;
+
+    /* Background and Foreground */
+    --background: var(--neutral-100);
+    --foreground: var(--neutral-900);
+
+    /* Shadcn compatible */
+    --primary: var(--life-blue);
+    --primary-foreground: 255 255 255;
+    --secondary: var(--neutral-100);
+    --secondary-foreground: var(--neutral-900);
+    --muted: var(--neutral-100);
+    --muted-foreground: var(--neutral-700);
+    --accent: var(--neutral-100);
+    --accent-foreground: var(--neutral-900);
+    --destructive: var(--error);
+    --destructive-foreground: 255 255 255;
+    --border: 226 232 240;
+    --input: 226 232 240;
+    --ring: var(--life-blue);
+    --radius: 8px;
   }
 
   .dark {
-    --background: 15 23 42;
-    --foreground: 243 244 246;
+    --background: var(--neutral-900);
+    --foreground: var(--neutral-100);
+    --muted: var(--neutral-900);
+    --muted-foreground: var(--neutral-700);
+    --accent: var(--neutral-900);
+    --accent-foreground: var(--neutral-100);
+    --border: 51 65 85;
+    --input: 51 65 85;
+  }
+
+  * {
+    @apply border-border;
   }
 
   body {
+    @apply font-sans;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     color: rgb(var(--foreground));
     background: rgb(var(--background));
+  }
+
+  h1 {
+    @apply text-4xl font-bold leading-tight tracking-tight;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold leading-snug tracking-tight;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold leading-snug tracking-tight;
+  }
+
+  h4 {
+    @apply text-xl font-semibold leading-normal;
+  }
+
+  h5 {
+    @apply text-lg font-medium leading-normal;
+  }
+
+  p, body {
+    @apply text-sm leading-relaxed;
+  }
+
+  .caption {
+    @apply text-xs leading-tight tracking-wide;
   }
 }
 
