@@ -15,6 +15,7 @@ import { AuthAPI, AggregatedDashboard } from '@/lib/api/auth'
 
 const AIAssistant = lazy(() => import('@/components/AIAssistant'))
 const CalendarEventsComponent = lazy(() => import('@/components/CalendarEvents'))
+const AIRecommendations = lazy(() => import('@/components/AIRecommendations'))
 
 interface DashboardTile {
   id: string
@@ -365,24 +366,9 @@ export default function DashboardPage() {
                  </Suspense>
                </div>
 
-              <div className="bg-white shadow rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">AI Suggestions</h3>
-                <div className="space-y-3">
-                  {suggestions.map((suggestion, index) => (
-                    <div key={index} className={`p-3 rounded-lg ${
-                      index % 3 === 0 ? 'bg-blue-50' :
-                      index % 3 === 1 ? 'bg-green-50' : 'bg-yellow-50'
-                    }`}>
-                      <p className={`text-sm ${
-                        index % 3 === 0 ? 'text-blue-800' :
-                        index % 3 === 1 ? 'text-green-800' : 'text-yellow-800'
-                      }`}>
-                        {suggestion}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+               <Suspense fallback={<div className="bg-white shadow rounded-lg p-6 h-96 flex items-center justify-center">Loading AI Recommendations...</div>}>
+                 <AIRecommendations userId={userId} maxItems={5} />
+               </Suspense>
             </div>
 
             <Suspense fallback={<div className="bg-white shadow rounded-lg p-6 h-96 flex items-center justify-center">Loading AI Assistant...</div>}>
