@@ -9,8 +9,17 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap = {}) {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Default shortcuts
       const defaultShortcuts: ShortcutMap = {
-        'ctrl+k': () => console.log('Quick search triggered'),
-        'shift+n': () => console.log('New task triggered'),
+        'ctrl+k': () => {
+          // Focus search input
+          const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+          if (searchInput) {
+            searchInput.focus()
+          }
+        },
+        'shift+n': () => {
+          // Trigger new task modal (could be implemented)
+          console.log('New task shortcut triggered')
+        },
         'ctrl+d': () => {
           if (typeof window !== 'undefined') {
             window.location.href = '/app/dashboard'
@@ -34,6 +43,22 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap = {}) {
         'ctrl+,': () => {
           if (typeof window !== 'undefined') {
             window.location.href = '/app/settings'
+          }
+        },
+        'ctrl+/': () => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/app/help'
+          }
+        },
+        'ctrl+r': () => {
+          // Refresh current page
+          window.location.reload()
+        },
+        'escape': () => {
+          // Close modals, clear focus, etc.
+          const activeElement = document.activeElement as HTMLElement
+          if (activeElement && activeElement.blur) {
+            activeElement.blur()
           }
         },
       }
