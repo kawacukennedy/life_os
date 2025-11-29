@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Button } from './ui/Button'
-import { useVoiceInput } from '@/hooks/useVoiceInput'
+import VoiceInput from './VoiceInput'
 import { AuthAPI } from '@/lib/api/auth'
 import { HealthAPI } from '@/lib/api/health'
 import { FinanceAPI } from '@/lib/api/finance'
@@ -20,7 +20,6 @@ export default function AIAssistant() {
   ])
   const [input, setInput] = useState('')
   const [userData, setUserData] = useState<any>(null)
-  const { isListening, transcript, startListening, stopListening, clearTranscript } = useVoiceInput()
 
   useEffect(() => {
     loadUserData()
@@ -47,12 +46,9 @@ export default function AIAssistant() {
     }
   }
 
-  // Update input when voice transcript changes
-  React.useEffect(() => {
-    if (transcript) {
-      setInput(transcript)
-    }
-  }, [transcript])
+  const handleVoiceTranscript = (transcript: string) => {
+    setInput(transcript)
+  }
 
   const handleSend = async () => {
     if (!input.trim()) return
@@ -325,23 +321,25 @@ export default function AIAssistant() {
           </Button>
         </div>
       </div>
-      <div className="flex space-x-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+      <div className="space-y-2">
+        <VoiceInput
+          onTranscript={handleVoiceTranscript}
           placeholder="Ask me anything..."
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start"
+          className="mb-2"
         />
-        <Button
-          onClick={isListening ? stopListening : startListening}
-          variant={isListening ? 'destructive' : 'outline'}
-          title={isListening ? 'Stop listening' : 'Start voice input'}
-        >
-          {isListening ? '🎤' : '🎙️'}
-        </Button>
-        <Button onClick={handleSend}>Send</Button>
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Or type your message..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start"
+          />
+          <Button onClick={handleSend} disabled={!input.trim()}>
+            Send
+          </Button>
+        </div>
       </div>
     </div>
   )
