@@ -11,6 +11,7 @@ const navItems = [
   { href: '/app/analytics', label: 'Analytics', icon: '📊' },
   { href: '/app/notifications', label: 'Notifications', icon: '🔔' },
   { href: '/app/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/app/help', label: 'Help', icon: '❓' },
 ]
 
 export default function LeftNav() {
