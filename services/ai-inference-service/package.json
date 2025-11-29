@@ -30,6 +30,7 @@
     "pg": "^8.0.0",
     "redis": "^4.0.0",
     "openai": "^4.0.0",
+    "@redis/vector-db": "^0.0.1",
     "axios": "^1.6.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",

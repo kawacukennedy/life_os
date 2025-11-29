@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
+import { VectorService } from './vector.service';
 
 @Injectable()
 export class AIService {
   private openai: OpenAI;
 
-  constructor() {
+  constructor(private readonly vectorService: VectorService) {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
@@ -52,7 +53,22 @@ export class AIService {
 
   async chat(userId: string, message: string, conversationId?: string) {
     try {
-      const systemPrompt = `You are LifeOS, an AI personal assistant for productivity and wellbeing. Help the user optimize their daily life, health, finances, and learning. Be helpful, concise, and proactive.`;
+      // Get message embedding
+      const embedding = await this.getEmbedding(message);
+
+      // Search for similar past conversations
+      const similarConversations = await this.vectorService.searchSimilar(embedding, 3);
+
+      // Build context from similar conversations
+      let contextPrompt = '';
+      if (similarConversations.length > 0) {
+        contextPrompt = 'Based on similar past conversations:\n' +
+          similarConversations.map(conv =>
+            `- Previous context: ${conv.metadata?.lastMessage || 'N/A'}`
+          ).join('\n') + '\n\n';
+      }
+
+      const systemPrompt = `You are LifeOS, an AI personal assistant for productivity and wellbeing. Help the user optimize their daily life, health, finances, and learning. Be helpful, concise, and proactive. ${contextPrompt}`;
 
       const response = await this.openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -66,9 +82,17 @@ export class AIService {
 
       const reply = response.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
 
+      // Store conversation with embedding
+      const convId = conversationId || `conv-${Date.now()}`;
+      await this.vectorService.storeEmbedding(convId, embedding, {
+        userId,
+        lastMessage: message,
+        lastResponse: reply,
+      });
+
       return {
         message: reply,
-        conversationId: conversationId || `conv-${Date.now()}`,
+        conversationId: convId,
         timestamp: new Date(),
       };
     } catch (error) {
@@ -112,5 +136,19 @@ export class AIService {
         reason: 'OpenAI unavailable',
       }),
     };
+  }
+
+  private async getEmbedding(text: string): Promise<number[]> {
+    try {
+      const response = await this.openai.embeddings.create({
+        model: 'text-embedding-ada-002',
+        input: text,
+      });
+      return response.data[0].embedding;
+    } catch (error) {
+      console.error('Embedding error:', error);
+      // Return zero vector as fallback
+      return new Array(1536).fill(0);
+    }
   }
 }
