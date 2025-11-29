@@ -33,4 +33,17 @@ export class Progress {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Spaced repetition fields
+  @Column('int', { default: 0 })
+  reviewCount: number;
+
+  @Column('float', { default: 2.5 })
+  easinessFactor: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  nextReviewDate: Date;
+
+  @Column('int', { default: 1 })
+  intervalDays: number;
 }

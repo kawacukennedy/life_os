@@ -51,4 +51,43 @@ export class LearningController {
   async getLearningStats(@Query('userId') userId: string) {
     return this.learningService.getLearningStats(userId);
   }
+
+  // Micro-course endpoints
+  @Get('micro-courses')
+  async getMicroCourses(
+    @Query('tags') tags?: string[],
+    @Query('difficulty') difficulty?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.learningService.getMicroCourses(tags, difficulty, limit);
+  }
+
+  @Post('micro-courses')
+  async createMicroCourse(@Body() courseData: any) {
+    return this.learningService.createMicroCourse(courseData);
+  }
+
+  @Get('reviews/due')
+  async getDueReviews(@Query('userId') userId: string) {
+    return this.learningService.getDueReviews(userId);
+  }
+
+  @Post('spaced-repetition')
+  async updateSpacedRepetition(
+    @Body() body: { userId: string; courseId: string; quality: number },
+  ) {
+    return this.learningService.updateSpacedRepetition(
+      body.userId,
+      body.courseId,
+      body.quality,
+    );
+  }
+
+  @Get('learning-path')
+  async getLearningPath(
+    @Query('userId') userId: string,
+    @Query('goal') goal: string,
+  ) {
+    return this.learningService.getLearningPath(userId, goal);
+  }
 }
