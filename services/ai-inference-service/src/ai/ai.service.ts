@@ -138,6 +138,126 @@ export class AIService {
     };
   }
 
+  async optimizeSchedule(userId: string, tasks: any[], constraints: any = {}) {
+    try {
+      const prompt = `Optimize the following schedule for user ${userId}. Tasks: ${JSON.stringify(tasks)}. Constraints: ${JSON.stringify(constraints)}. Provide an optimized schedule with time slots, considering energy levels, commute time, and priorities. Return as JSON with optimized_tasks array.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4', // Use GPT-4 for complex optimization
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.3,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from OpenAI');
+      }
+
+      const optimizedSchedule = JSON.parse(content);
+
+      return {
+        optimizedTasks: optimizedSchedule.optimized_tasks || [],
+        reasoning: optimizedSchedule.reasoning || 'Optimized based on priorities and constraints',
+        modelMeta: JSON.stringify({
+          model: 'gpt-4',
+          tokens_used: response.usage?.total_tokens || 0,
+        }),
+      };
+    } catch (error) {
+      console.error('Schedule optimization error:', error);
+      // Fallback to simple priority-based sorting
+      return this.fallbackScheduleOptimization(tasks, constraints);
+    }
+  }
+
+  async generatePersonalizedRecommendations(userId: string, userData: any) {
+    try {
+      const prompt = `Based on user data: ${JSON.stringify(userData)}, generate personalized recommendations for health, productivity, learning, and finance. Consider user's goals, habits, and current status. Return as JSON array with category, priority, and actionable advice.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 800,
+        temperature: 0.5,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from OpenAI');
+      }
+
+      const recommendations = JSON.parse(content);
+
+      return {
+        recommendations: recommendations.map((rec, index) => ({
+          id: `rec-${Date.now()}-${index}`,
+          category: rec.category,
+          priority: rec.priority || 'medium',
+          advice: rec.advice,
+          actionable: rec.actionable || true,
+          createdAt: new Date(),
+        })),
+        modelMeta: JSON.stringify({
+          model: 'gpt-4',
+          tokens_used: response.usage?.total_tokens || 0,
+        }),
+      };
+    } catch (error) {
+      console.error('Recommendation generation error:', error);
+      return this.fallbackRecommendations(userData);
+    }
+  }
+
+  private fallbackScheduleOptimization(tasks: any[], constraints: any) {
+    // Simple priority-based optimization
+    const sortedTasks = tasks.sort((a, b) => {
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      return priorityOrder[b.priority] - priorityOrder[a.priority];
+    });
+
+    return {
+      optimizedTasks: sortedTasks.map((task, index) => ({
+        ...task,
+        suggestedTime: `Slot ${index + 1}`,
+      })),
+      reasoning: 'Sorted by priority (fallback)',
+      modelMeta: JSON.stringify({
+        model: 'fallback',
+        reason: 'OpenAI unavailable',
+      }),
+    };
+  }
+
+  private fallbackRecommendations(userData: any) {
+    const fallbackRecs = [
+      {
+        id: 'fallback-rec-1',
+        category: 'health',
+        priority: 'high',
+        advice: 'Remember to stay hydrated throughout the day',
+        actionable: true,
+        createdAt: new Date(),
+      },
+      {
+        id: 'fallback-rec-2',
+        category: 'productivity',
+        priority: 'medium',
+        advice: 'Take short breaks between tasks to maintain focus',
+        actionable: true,
+        createdAt: new Date(),
+      },
+    ];
+
+    return {
+      recommendations: fallbackRecs,
+      modelMeta: JSON.stringify({
+        model: 'fallback',
+        reason: 'OpenAI unavailable',
+      }),
+    };
+  }
+
   private async getEmbedding(text: string): Promise<number[]> {
     try {
       const response = await this.openai.embeddings.create({
