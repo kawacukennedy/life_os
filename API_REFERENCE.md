@@ -15,6 +15,107 @@ Authorization: Bearer <your-jwt-token>
 - Refresh tokens expire in 30 days
 - Use `/auth/refresh` endpoint to get new tokens
 
+## GraphQL API
+
+The primary API interface is GraphQL, accessible at `/graphql`. It provides a unified interface for all services.
+
+### Authentication Context
+GraphQL resolvers automatically extract user information from JWT tokens. All queries and mutations require authentication unless specified otherwise.
+
+### Example GraphQL Operations
+
+#### Get User Profile and Tasks
+```graphql
+query GetDashboardData($userId: String!) {
+  userProfile(userId: $userId) {
+    user {
+      id
+      email
+      name
+      locale
+      timezone
+    }
+    profile {
+      displayName
+      bio
+      role
+      preferences
+    }
+    connectedIntegrations {
+      google
+      fitbit
+      plaid
+    }
+  }
+  tasks(userId: $userId, limit: 10) {
+    tasks {
+      id
+      title
+      status
+      priority
+      dueAt
+      durationMinutes
+    }
+    totalCount
+  }
+  getSuggestions(userId: $userId, context: "dashboard", maxResults: 3) {
+    suggestions {
+      id
+      type
+      confidence
+      payload
+    }
+  }
+}
+```
+
+#### Create and Update Tasks
+```graphql
+mutation ManageTasks($userId: String!, $title: String!) {
+  createTask(userId: $userId, title: $title, priority: 3) {
+    id
+    title
+    status
+    createdAt
+  }
+}
+
+mutation UpdateTask($taskId: ID!, $status: String!) {
+  updateTask(id: $taskId, status: $status) {
+    id
+    status
+    updatedAt
+  }
+}
+```
+
+#### AI-Powered Features
+```graphql
+query GetAIInsights($userId: String!, $userData: String!) {
+  getPersonalizedRecommendations(userId: $userId, userData: $userData) {
+    recommendations {
+      id
+      category
+      priority
+      advice
+      actionable
+    }
+  }
+}
+
+mutation OptimizeSchedule($userId: String!, $tasks: [TaskInput!]!) {
+  optimizeSchedule(userId: $userId, tasks: $tasks) {
+    optimizedTasks {
+      id
+      title
+      suggestedTime
+      priority
+    }
+    reasoning
+  }
+}
+```
+
 ## Core Endpoints
 
 ### Authentication Service (Port 3001)
@@ -381,6 +482,185 @@ Authorization: Bearer <token>
 GET /learning/analytics/streaks
 Authorization: Bearer <token>
 # Returns learning streak information
+```
+
+### User Profile Service (Port 3007)
+
+#### Get Profile
+```http
+GET /profile/{userId}
+Authorization: Bearer <token>
+```
+
+**Response (200):**
+```json
+{
+  "userId": "user-123",
+  "displayName": "John Doe",
+  "bio": "Software developer",
+  "role": "premium",
+  "preferences": {
+    "theme": "dark",
+    "notifications": { "email": true, "push": true, "sms": false },
+    "privacy": { "profileVisibility": "private", "dataSharing": false }
+  },
+  "connectedIntegrations": {
+    "google": true,
+    "fitbit": false,
+    "plaid": true
+  }
+}
+```
+
+#### Update Profile
+```http
+PUT /profile/{userId}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "displayName": "Jane Doe",
+  "bio": "Updated bio"
+}
+```
+
+#### Update Preferences
+```http
+PUT /profile/{userId}/preferences
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "theme": "light",
+  "notifications": { "email": false }
+}
+```
+
+#### Export Profile Data (GDPR)
+```http
+GET /profile/{userId}/export?format=json|csv
+Authorization: Bearer <token>
+```
+
+#### Role Management
+```http
+PUT /profile/{userId}/role
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "role": "admin"
+}
+```
+
+### AI Inference Service (Port 3009)
+
+#### Get AI Suggestions
+```http
+POST /ai/suggest
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "userId": "user-123",
+  "context": "daily planning",
+  "maxResults": 5
+}
+```
+
+**Response (200):**
+```json
+{
+  "suggestions": [
+    {
+      "id": "suggestion-1",
+      "type": "schedule_optimization",
+      "confidence": 0.85,
+      "payload": "{\"action\":\"reschedule_meeting\",\"reason\":\"Better energy levels\"}",
+      "createdAt": "2024-01-15T10:00:00Z"
+    }
+  ],
+  "modelMeta": "{\"model\":\"gpt-4\",\"tokens_used\":150}"
+}
+```
+
+#### Optimize Schedule
+```http
+POST /ai/optimize-schedule
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "userId": "user-123",
+  "tasks": [
+    { "id": "task-1", "title": "Meeting", "priority": 3 }
+  ],
+  "constraints": { "maxHoursPerDay": 8 }
+}
+```
+
+#### Chat with AI Assistant
+```http
+POST /ai/chat
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "userId": "user-123",
+  "message": "Help me plan my day",
+  "conversationId": "conv-123"
+}
+```
+
+### Subscription Service (Port 3006)
+
+#### Create Subscription
+```http
+POST /subscription/create
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "priceId": "price_premium_monthly",
+  "paymentMethodId": "pm_123456789"
+}
+```
+
+#### Get Subscription Status
+```http
+GET /subscription
+Authorization: Bearer <token>
+```
+
+**Response (200):**
+```json
+{
+  "id": "sub_123",
+  "userId": "user-123",
+  "plan": "premium",
+  "status": "active",
+  "currentPeriodStart": "2024-01-01T00:00:00Z",
+  "currentPeriodEnd": "2024-02-01T00:00:00Z",
+  "billingCycle": "monthly",
+  "amount": 999
+}
+```
+
+#### Cancel Subscription
+```http
+POST /subscription/cancel
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "cancelAtPeriodEnd": true
+}
+```
+
+#### Get Invoice History
+```http
+GET /subscription/invoices
+Authorization: Bearer <token>
 ```
 
 ### Notification Service (Port 3005)
