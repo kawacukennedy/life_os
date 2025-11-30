@@ -2,6 +2,7 @@
 
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery, useMutation } from '@apollo/client'
 import { Button } from '@/components/ui/Button'
 import { DashboardSkeleton } from '@/components/ui/CardSkeleton'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -9,16 +10,71 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { useSwipeGesture } from '@/hooks/useSwipeGesture'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
-import { HealthAPI, HealthSummary } from '@/lib/api/health'
-import { FinanceAPI, FinanceSummary } from '@/lib/api/finance'
-import { LearningAPI, LearningStats } from '@/lib/api/learning'
-import { NotificationsAPI } from '@/lib/api/notifications'
-import { AuthAPI, AggregatedDashboard } from '@/lib/api/auth'
+import gql from 'graphql-tag'
 
 const AIAssistant = lazy(() => import('@/components/AIAssistant'))
 const CalendarEventsComponent = lazy(() => import('@/components/CalendarEvents'))
 const AIRecommendations = lazy(() => import('@/components/AIRecommendations'))
 const DashboardSkeleton = lazy(() => import('@/components/ui/CardSkeleton').then(mod => ({ default: mod.DashboardSkeleton })))
+
+// GraphQL Queries
+const GET_DASHBOARD_DATA = gql`
+  query GetDashboardData($userId: String!) {
+    userProfile(userId: $userId) {
+      user {
+        id
+        email
+        name
+        locale
+        timezone
+      }
+      profile {
+        displayName
+        bio
+        preferences
+        connectedIntegrations
+      }
+      connectedIntegrations
+    }
+    tasks(userId: $userId, limit: 10) {
+      tasks {
+        id
+        title
+        status
+        priority
+        dueAt
+        durationMinutes
+      }
+      totalCount
+    }
+    getSuggestions(userId: $userId, context: "dashboard_overview", maxResults: 5) {
+      suggestions {
+        id
+        type
+        confidence
+        payload
+        createdAt
+      }
+      modelMeta
+    }
+  }
+`
+
+const GET_AI_RECOMMENDATIONS = gql`
+  query GetAIRecommendations($userId: String!, $userData: String!) {
+    getPersonalizedRecommendations(userId: $userId, userData: $userData) {
+      recommendations {
+        id
+        category
+        priority
+        advice
+        actionable
+        createdAt
+      }
+      modelMeta
+    }
+  }
+`
 
 interface DashboardTile {
   id: string
@@ -33,14 +89,55 @@ interface DashboardTile {
 export default function DashboardPage() {
   const [tiles, setTiles] = useState<DashboardTile[]>([])
   const [suggestions, setSuggestions] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const { addToast } = useToast()
   const { trackError, trackFeatureUsage } = useAnalytics()
 
   const userId = localStorage.getItem('userId') || 'user123'
   const { socket } = useWebSocket(userId)
+
+  // GraphQL query for dashboard data
+  const { data, loading, error, refetch } = useQuery(GET_DASHBOARD_DATA, {
+    variables: { userId },
+    onCompleted: (data) => {
+      if (data) {
+        // Create dashboard tiles from GraphQL data
+        const dashboardTiles: DashboardTile[] = [
+          {
+            id: 'tasks',
+            type: 'tasks',
+            title: 'Active Tasks',
+            value: data.tasks?.totalCount || 0,
+            icon: '📋',
+            color: 'bg-blue-500',
+          },
+          {
+            id: 'profile',
+            type: 'profile',
+            title: 'Profile Status',
+            value: data.userProfile?.profile?.displayName || 'Setup Profile',
+            icon: '👤',
+            color: 'bg-green-500',
+          },
+        ]
+
+        setTiles(dashboardTiles)
+
+        // Set AI suggestions
+        const aiSuggestions = data.getSuggestions?.suggestions || []
+        setSuggestions(aiSuggestions.map((s: any) => JSON.parse(s.payload).action || s.type))
+      }
+    },
+    onError: (error) => {
+      console.error('GraphQL error:', error)
+      trackError(error, 'dashboard_graphql')
+      addToast({
+        title: 'Dashboard Error',
+        description: 'Unable to load dashboard data. Please try again.',
+        variant: 'destructive'
+      })
+    }
+  })
 
   // Mobile swipe gestures
   const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeGesture(
@@ -92,191 +189,8 @@ export default function DashboardPage() {
     'r': () => loadDashboardData(),
   })
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true)
-
-      // Try to use aggregated dashboard API first
-      try {
-        const aggregatedData = await AuthAPI.getAggregatedDashboard()
-
-        // Create dashboard tiles from aggregated data
-        const dashboardTiles: DashboardTile[] = [
-          {
-            id: 'health',
-            type: 'health',
-            title: 'Health Score',
-            value: `${Math.round((aggregatedData.health.averageHeartRate / 80) * 100)}/100`,
-            icon: '💚',
-            color: 'bg-accent-green',
-          },
-          {
-            id: 'finance',
-            type: 'finance',
-            title: 'Balance',
-            value: `$${aggregatedData.finance.totalBalance.toLocaleString()}`,
-            icon: '💰',
-            color: 'bg-accent-yellow',
-          },
-          {
-            id: 'learning',
-            type: 'learning',
-            title: 'Learning Progress',
-            value: `${Math.round(aggregatedData.learning.averageProgress)}%`,
-            icon: '📚',
-            color: 'bg-blue-500',
-          },
-          {
-            id: 'notifications',
-            type: 'notifications',
-            title: 'Notifications',
-            value: aggregatedData.notifications.unreadCount,
-            icon: '🔔',
-            color: 'bg-primary-start',
-          },
-        ]
-
-        setTiles(dashboardTiles)
-        setSuggestions(aggregatedData.suggestions.slice(0, 3))
-        return
-      } catch (aggregatedErr) {
-        console.log('Aggregated dashboard not available, falling back to individual APIs:', aggregatedErr)
-      }
-
-      // Fallback to individual service calls
-      const userId = localStorage.getItem('userId') || 'user123'
-
-      // Load data from all services in parallel
-      const [healthSummary, financeSummary, learningStats, unreadCount] = await Promise.allSettled([
-        HealthAPI.getHealthSummary(userId),
-        FinanceAPI.getFinanceSummary(userId),
-        LearningAPI.getLearningStats(userId),
-        NotificationsAPI.getUnreadCount(userId),
-      ])
-
-      // Create dashboard tiles
-      const dashboardTiles: DashboardTile[] = []
-
-      // Health tile
-      if (healthSummary.status === 'fulfilled') {
-        const health = healthSummary.value
-        dashboardTiles.push({
-          id: 'health',
-          type: 'health',
-          title: 'Health Score',
-          value: `${Math.round((health.averageHeartRate / 80) * 100)}/100`, // Simple health score calculation
-          icon: '💚',
-          color: 'bg-accent-green',
-        })
-      }
-
-      // Finance tile
-      if (financeSummary.status === 'fulfilled') {
-        const finance = financeSummary.value
-        dashboardTiles.push({
-          id: 'finance',
-          type: 'finance',
-          title: 'Balance',
-          value: `$${finance.totalBalance.toLocaleString()}`,
-          icon: '💰',
-          color: 'bg-accent-yellow',
-        })
-      }
-
-      // Learning tile
-      if (learningStats.status === 'fulfilled') {
-        const learning = learningStats.value
-        dashboardTiles.push({
-          id: 'learning',
-          type: 'learning',
-          title: 'Learning Progress',
-          value: `${Math.round(learning.averageProgress)}%`,
-          icon: '📚',
-          color: 'bg-blue-500',
-        })
-      }
-
-      // Tasks/Notifications tile
-      if (unreadCount.status === 'fulfilled') {
-        dashboardTiles.push({
-          id: 'notifications',
-          type: 'notifications',
-          title: 'Notifications',
-          value: unreadCount.value,
-          icon: '🔔',
-          color: 'bg-primary-start',
-        })
-      }
-
-      setTiles(dashboardTiles)
-
-      // Generate AI suggestions based on data
-      const suggestionsList: string[] = []
-      if (healthSummary.status === 'fulfilled') {
-        const health = healthSummary.value
-        if (health.averageHeartRate > 75) {
-          suggestionsList.push('Consider scheduling a doctor visit - your heart rate is elevated')
-        }
-        if (health.totalSteps < 7000) {
-          suggestionsList.push('Try to reach 8,000 steps today for better health')
-        }
-      }
-
-      if (financeSummary.status === 'fulfilled') {
-        const finance = financeSummary.value
-        if (finance.monthlyExpenses > finance.monthlyIncome * 0.8) {
-          suggestionsList.push('Your expenses are 80% of income - consider budgeting adjustments')
-        }
-      }
-
-      if (learningStats.status === 'fulfilled') {
-        const learning = learningStats.value
-        if (learning.averageProgress < 50) {
-          suggestionsList.push('Focus on completing your learning courses this week')
-        }
-      }
-
-      // Default suggestions if no specific ones
-      if (suggestionsList.length === 0) {
-        suggestionsList.push(
-          'Great job staying on track with your goals!',
-          'Consider adding a new learning course to expand your skills',
-          'Remember to take breaks and maintain work-life balance'
-        )
-      }
-
-      setSuggestions(suggestionsList.slice(0, 3))
-
-      // Track successful dashboard load
-      trackFeatureUsage('dashboard', 'load_success')
-
-      // Show success feedback for first load
-      if (!tiles.length) {
-        addToast({
-          title: 'Dashboard Updated',
-          description: 'Your personalized dashboard is ready!',
-          variant: 'success',
-          duration: 3000
-        })
-      }
-
-    } catch (err) {
-      const errorMessage = 'Failed to load dashboard data. Some features may be unavailable.'
-      setError(errorMessage)
-      console.error('Error loading dashboard data:', err)
-
-      // Track error for analytics
-      trackError(err instanceof Error ? err : new Error(errorMessage), 'dashboard_load')
-
-      // Show user-friendly error toast
-      addToast({
-        title: 'Dashboard Error',
-        description: 'Unable to load some dashboard data. Please check your connections.',
-        variant: 'destructive'
-      })
-    } finally {
-      setLoading(false)
-    }
+  const loadDashboardData = () => {
+    refetch()
   }
 
   if (loading) {
