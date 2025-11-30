@@ -9,11 +9,22 @@ import {
   Query,
   UseGuards,
   Request,
+  UsePipes,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SanitizationValidationPipe } from '../common/validation.pipe';
+import {
+  UpdateProfileDto,
+  UpdatePreferencesDto,
+  UpdatePrivacyDto,
+  UpdateIntegrationsDto,
+  CreateProfileDto,
+  UpdateRoleDto,
+} from '../common/validation.dto';
 
 @Controller('profile')
+@UsePipes(new SanitizationValidationPipe())
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
@@ -23,35 +34,35 @@ export class ProfileController {
     return this.profileService.getProfile(userId);
   }
 
-  @Post(':userId')
-  @UseGuards(JwtAuthGuard)
-  async createProfile(@Param('userId') userId: string, @Body() data: any) {
-    return this.profileService.createProfile(userId, data);
-  }
+   @Post(':userId')
+   @UseGuards(JwtAuthGuard)
+   async createProfile(@Param('userId') userId: string, @Body() data: CreateProfileDto) {
+     return this.profileService.createProfile(userId, data);
+   }
 
-  @Put(':userId')
-  @UseGuards(JwtAuthGuard)
-  async updateProfile(@Param('userId') userId: string, @Body() data: any) {
-    return this.profileService.updateProfile(userId, data);
-  }
+   @Put(':userId')
+   @UseGuards(JwtAuthGuard)
+   async updateProfile(@Param('userId') userId: string, @Body() data: UpdateProfileDto) {
+     return this.profileService.updateProfile(userId, data);
+   }
 
-  @Put(':userId/preferences')
-  @UseGuards(JwtAuthGuard)
-  async updatePreferences(@Param('userId') userId: string, @Body() preferences: any) {
-    return this.profileService.updatePreferences(userId, preferences);
-  }
+   @Put(':userId/preferences')
+   @UseGuards(JwtAuthGuard)
+   async updatePreferences(@Param('userId') userId: string, @Body() preferences: UpdatePreferencesDto) {
+     return this.profileService.updatePreferences(userId, preferences);
+   }
 
-  @Put(':userId/privacy')
-  @UseGuards(JwtAuthGuard)
-  async updatePrivacySettings(@Param('userId') userId: string, @Body() privacy: any) {
-    return this.profileService.updatePrivacySettings(userId, privacy);
-  }
+   @Put(':userId/privacy')
+   @UseGuards(JwtAuthGuard)
+   async updatePrivacySettings(@Param('userId') userId: string, @Body() privacy: UpdatePrivacyDto) {
+     return this.profileService.updatePrivacySettings(userId, privacy);
+   }
 
-  @Put(':userId/integrations')
-  @UseGuards(JwtAuthGuard)
-  async updateIntegrations(@Param('userId') userId: string, @Body() integrations: any) {
-    return this.profileService.updateIntegrations(userId, integrations);
-  }
+   @Put(':userId/integrations')
+   @UseGuards(JwtAuthGuard)
+   async updateIntegrations(@Param('userId') userId: string, @Body() integrations: UpdateIntegrationsDto) {
+     return this.profileService.updateIntegrations(userId, integrations);
+   }
 
    @Get(':userId/export')
    @UseGuards(JwtAuthGuard)
@@ -74,7 +85,7 @@ export class ProfileController {
 
    @Put(':userId/role')
    @UseGuards(JwtAuthGuard)
-   async updateRole(@Param('userId') userId: string, @Body() body: { role: string }) {
+   async updateRole(@Param('userId') userId: string, @Body() body: UpdateRoleDto) {
      return this.profileService.updateRole(userId, body.role);
    }
 
