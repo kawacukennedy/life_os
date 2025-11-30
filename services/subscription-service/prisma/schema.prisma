@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String
+  plan              String   // free, premium, enterprise
+  status            String   // active, canceled, past_due, incomplete
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+  stripePriceId     String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean  @default(false)
+  billingCycle      String   // monthly, yearly
+  amount            Int?     // amount in cents
+  currency          String   @default("usd")
+  trialEnd          DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id                String   @id @default(cuid())
+  userId            String
+  subscriptionId    String?
+  stripeInvoiceId   String   @unique
+  amount            Int
+  currency          String   @default("usd")
+  status            String   // paid, open, void, draft
+  invoicePdf        String?
+  hostedInvoiceUrl  String?
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  createdAt         DateTime @default(now())
+
+  @@map("invoices")
+}
+
+model PaymentMethod {
+  id                String   @id @default(cuid())
+  userId            String
+  stripePaymentMethodId String @unique
+  type              String   // card, bank_account
+  last4             String?
+  brand             String?
+  expiryMonth       Int?
+  expiryYear        Int?
+  isDefault         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@map("payment_methods")
+}

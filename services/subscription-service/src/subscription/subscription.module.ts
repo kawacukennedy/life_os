@@ -1,0 +1,20 @@
+import { Module } from '@nestjs/common';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
+import { SubscriptionController } from './subscription.controller';
+import { SubscriptionService } from './subscription.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Module({
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'secret',
+      signOptions: { expiresIn: '15m' },
+    }),
+  ],
+  controllers: [SubscriptionController],
+  providers: [SubscriptionService, JwtAuthGuard],
+  exports: [SubscriptionService],
+})
+export class SubscriptionModule {}
