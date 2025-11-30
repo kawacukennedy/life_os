@@ -48,12 +48,24 @@ export class FinanceController {
   }
 
   @Get('plaid/transactions')
-  async getTransactions(
+  async getTransactionsPlaid(
     @Query('accessToken') accessToken: string,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ) {
     return this.plaidService.getTransactions(accessToken, startDate, endDate);
+  }
+
+  @Post('plaid/sync')
+  async syncPlaidTransactions(
+    @Body() body: { userId: string; accessToken: string },
+  ) {
+    return this.financeService.syncPlaidTransactions(body.userId, body.accessToken);
+  }
+
+  @Get('insights')
+  async getSpendingInsights(@Query('userId') userId: string) {
+    return this.financeService.getSpendingInsights(userId);
   }
 
   @Get('plaid/balances')

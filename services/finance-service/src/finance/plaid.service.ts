@@ -48,6 +48,100 @@ export class PlaidService {
       const response = await this.client.itemPublicTokenExchange(request);
       return response.data;
     } catch (error) {
+      console.error('Error exchanging public token:', error);
+      throw error;
+    }
+  }
+
+  async getTransactions(accessToken: string, startDate: string, endDate: string): Promise<any> {
+    try {
+      const request = {
+        access_token: accessToken,
+        start_date: startDate,
+        end_date: endDate,
+        options: {
+          include_personal_finance_category: true,
+        },
+      };
+
+      const response = await this.client.transactionsGet(request);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw error;
+    }
+  }
+
+  async getAccounts(accessToken: string): Promise<any> {
+    try {
+      const request = {
+        access_token: accessToken,
+      };
+
+      const response = await this.client.accountsGet(request);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      throw error;
+    }
+  }
+
+  async getIdentity(accessToken: string): Promise<any> {
+    try {
+      const request = {
+        access_token: accessToken,
+      };
+
+      const response = await this.client.identityGet(request);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching identity:', error);
+      throw error;
+    }
+  }
+
+  categorizeTransaction(description: string, amount: number): string {
+    const lowerDesc = description.toLowerCase();
+
+    // Food & Dining
+    if (lowerDesc.includes('restaurant') || lowerDesc.includes('cafe') || lowerDesc.includes('mcdonald') ||
+        lowerDesc.includes('starbucks') || lowerDesc.includes('subway')) {
+      return 'Food & Dining';
+    }
+
+    // Transportation
+    if (lowerDesc.includes('uber') || lowerDesc.includes('lyft') || lowerDesc.includes('gas') ||
+        lowerDesc.includes('shell') || lowerDesc.includes('exxon') || lowerDesc.includes('bp')) {
+      return 'Transportation';
+    }
+
+    // Shopping
+    if (lowerDesc.includes('amazon') || lowerDesc.includes('walmart') || lowerDesc.includes('target') ||
+        lowerDesc.includes('costco') || lowerDesc.includes('ikea')) {
+      return 'Shopping';
+    }
+
+    // Entertainment
+    if (lowerDesc.includes('netflix') || lowerDesc.includes('spotify') || lowerDesc.includes('movie') ||
+        lowerDesc.includes('theater') || lowerDesc.includes('concert')) {
+      return 'Entertainment';
+    }
+
+    // Utilities
+    if (lowerDesc.includes('electric') || lowerDesc.includes('water') || lowerDesc.includes('internet') ||
+        lowerDesc.includes('phone') || lowerDesc.includes('comcast') || lowerDesc.includes('verizon')) {
+      return 'Utilities';
+    }
+
+    // Healthcare
+    if (lowerDesc.includes('pharmacy') || lowerDesc.includes('doctor') || lowerDesc.includes('hospital') ||
+        lowerDesc.includes('cvs') || lowerDesc.includes('walgreens')) {
+      return 'Healthcare';
+    }
+
+    // Default category
+    return amount > 0 ? 'Income' : 'Other';
+  }
       console.error('Error exchanging Plaid public token:', error);
       throw error;
     }
