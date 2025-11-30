@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -52,11 +53,17 @@ export class ProfileController {
     return this.profileService.updateIntegrations(userId, integrations);
   }
 
-  @Get(':userId/export')
-  @UseGuards(JwtAuthGuard)
-  async exportProfileData(@Param('userId') userId: string) {
-    return this.profileService.exportProfileData(userId);
-  }
+   @Get(':userId/export')
+   @UseGuards(JwtAuthGuard)
+   async exportProfileData(@Param('userId') userId: string, @Query('format') format: 'json' | 'csv' = 'json') {
+     return this.profileService.exportProfileData(userId, format);
+   }
+
+   @Post(':userId/import')
+   @UseGuards(JwtAuthGuard)
+   async importProfileData(@Param('userId') userId: string, @Body() importData: any) {
+     return this.profileService.importProfileData(userId, importData);
+   }
 
   @Post(':userId/anonymize')
   @UseGuards(JwtAuthGuard)
@@ -65,10 +72,30 @@ export class ProfileController {
     return { message: 'Profile anonymized successfully' };
   }
 
-  @Delete(':userId')
-  @UseGuards(JwtAuthGuard)
-  async deleteProfile(@Param('userId') userId: string) {
-    await this.profileService.deleteProfile(userId);
-    return { message: 'Profile deleted successfully' };
-  }
-}
+   @Put(':userId/role')
+   @UseGuards(JwtAuthGuard)
+   async updateRole(@Param('userId') userId: string, @Body() body: { role: string }) {
+     return this.profileService.updateRole(userId, body.role);
+   }
+
+   @Get(':userId/role')
+   @UseGuards(JwtAuthGuard)
+   async getRole(@Param('userId') userId: string) {
+     const role = await this.profileService.getRole(userId);
+     return { role };
+   }
+
+   @Get(':userId/permissions')
+   @UseGuards(JwtAuthGuard)
+   async getPermissions(@Param('userId') userId: string, @Body() body: { resource: string; action: string }) {
+     const hasPermission = await this.profileService.hasPermission(userId, body.resource, body.action);
+     return { hasPermission };
+   }
+
+   @Delete(':userId')
+   @UseGuards(JwtAuthGuard)
+   async deleteProfile(@Param('userId') userId: string) {
+     await this.profileService.deleteProfile(userId);
+     return { message: 'Profile deleted successfully' };
+   }
+ }

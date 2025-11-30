@@ -15,6 +15,7 @@ model Profile {
   displayName           String?
   bio                   String?
   avatarUrl             String?
+  role                  String   @default("end_user")
   preferences           Json?
   metadata              Json?
   connectedIntegrations Json?
