@@ -1,24 +1,18 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
 import { User, UserProfile } from './user.types';
+import { UserService } from './user.service';
 
 @Resolver(() => User)
 export class UserResolver {
+  constructor(private readonly userService: UserService) {}
+
   @Query(() => UserProfile)
   async userProfile(@Context() context: any): Promise<UserProfile> {
-    // TODO: Implement user profile query
-    // This would aggregate data from user service
-    return {
-      user: {
-        id: '1',
-        email: 'user@example.com',
-        name: 'John Doe',
-        locale: 'en-US',
-        timezone: 'UTC',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      connectedIntegrations: [],
-    };
+    const userId = context.req.user?.id;
+    if (!userId) {
+      throw new Error('Unauthorized');
+    }
+    return this.userService.getUserProfile(userId);
   }
 
   @Mutation(() => User)
@@ -27,16 +21,12 @@ export class UserResolver {
     @Args('name', { nullable: true }) name?: string,
     @Args('locale', { nullable: true }) locale?: string,
     @Args('timezone', { nullable: true }) timezone?: string,
+    @Context() context: any,
   ): Promise<User> {
-    // TODO: Implement update user mutation
-    return {
-      id,
-      email: 'user@example.com',
-      name: name || 'John Doe',
-      locale: locale || 'en-US',
-      timezone: timezone || 'UTC',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const userId = context.req.user?.id;
+    if (!userId || userId !== id) {
+      throw new Error('Unauthorized');
+    }
+    return this.userService.updateUser(id, { name, locale, timezone });
   }
 }

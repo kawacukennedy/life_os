@@ -1,48 +1,30 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
 import { Task, TaskList } from './task.types';
+import { TaskService } from './task.service';
 
 @Resolver(() => Task)
 export class TaskResolver {
+  constructor(private readonly taskService: TaskService) {}
+
   @Query(() => TaskList)
   async tasks(
     @Args('userId') userId: string,
     @Args('status', { nullable: true }) status?: string,
     @Args('limit', { nullable: true, type: () => Number }) limit?: number,
     @Args('offset', { nullable: true, type: () => Number }) offset?: number,
+    @Context() context: any,
   ): Promise<TaskList> {
-    // TODO: Implement tasks query
-    return {
-      tasks: [
-        {
-          id: '1',
-          title: 'Sample Task',
-          description: 'This is a sample task',
-          status: status || 'pending',
-          priority: 3,
-          dueAt: new Date(),
-          durationMinutes: 60,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      totalCount: 1,
-    };
+    const authenticatedUserId = context.req.user?.id;
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
+      throw new Error('Unauthorized');
+    }
+    return this.taskService.getTasks(userId, { status, limit, offset });
   }
 
   @Query(() => Task)
-  async task(@Args('id') id: string): Promise<Task> {
-    // TODO: Implement single task query
-    return {
-      id,
-      title: 'Sample Task',
-      description: 'This is a sample task',
-      status: 'pending',
-      priority: 3,
-      dueAt: new Date(),
-      durationMinutes: 60,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  async task(@Args('id') id: string, @Context() context: any): Promise<Task> {
+    // TODO: Add authorization check for task ownership
+    return this.taskService.getTask(id);
   }
 
   @Mutation(() => Task)
@@ -53,19 +35,19 @@ export class TaskResolver {
     @Args('priority', { nullable: true, type: () => Number }) priority?: number,
     @Args('dueAt', { nullable: true }) dueAt?: Date,
     @Args('durationMinutes', { nullable: true, type: () => Number }) durationMinutes?: number,
+    @Context() context: any,
   ): Promise<Task> {
-    // TODO: Implement create task mutation
-    return {
-      id: 'new-task-id',
+    const authenticatedUserId = context.req.user?.id;
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
+      throw new Error('Unauthorized');
+    }
+    return this.taskService.createTask(userId, {
       title,
       description,
-      status: 'pending',
-      priority: priority || 3,
+      priority,
       dueAt,
       durationMinutes,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
   }
 
   @Mutation(() => Task)
@@ -74,24 +56,15 @@ export class TaskResolver {
     @Args('title', { nullable: true }) title?: string,
     @Args('status', { nullable: true }) status?: string,
     @Args('priority', { nullable: true, type: () => Number }) priority?: number,
+    @Context() context: any,
   ): Promise<Task> {
-    // TODO: Implement update task mutation
-    return {
-      id,
-      title: title || 'Updated Task',
-      description: 'Updated description',
-      status: status || 'pending',
-      priority: priority || 3,
-      dueAt: new Date(),
-      durationMinutes: 60,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    // TODO: Add authorization check for task ownership
+    return this.taskService.updateTask(id, { title, status, priority });
   }
 
   @Mutation(() => Boolean)
-  async deleteTask(@Args('id') id: string): Promise<boolean> {
-    // TODO: Implement delete task mutation
-    return true;
+  async deleteTask(@Args('id') id: string, @Context() context: any): Promise<boolean> {
+    // TODO: Add authorization check for task ownership
+    return this.taskService.deleteTask(id);
   }
 }
