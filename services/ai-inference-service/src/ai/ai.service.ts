@@ -1,18 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI from 'openai';
 import { VectorService } from './vector.service';
+import { MonitoringService } from './monitoring.service';
+import { LoggingService } from './logging.service';
 
 @Injectable()
 export class AIService {
   private openai: OpenAI;
 
-  constructor(private readonly vectorService: VectorService) {
+  constructor(
+    private readonly vectorService: VectorService,
+    private readonly monitoringService: MonitoringService,
+    private readonly loggingService: LoggingService,
+  ) {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
   }
 
   async generateSuggestions(userId: string, context: string, maxResults = 5) {
+    const startTime = Date.now();
     try {
       const prompt = `Based on the user's context: "${context}", provide ${maxResults} personalized suggestions for improving productivity, health, or daily life. Format as JSON array with id, type, confidence, and payload.`;
 
@@ -23,6 +30,9 @@ export class AIService {
         temperature: 0.7,
       });
 
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('suggestions', 'gpt-3.5-turbo', duration, true);
+
       const content = response.choices[0]?.message?.content;
       if (!content) {
         throw new Error('No response from OpenAI');
@@ -30,6 +40,8 @@ export class AIService {
 
       // Parse the JSON response
       const suggestions = JSON.parse(content);
+
+      this.loggingService.logAiInference('generate_suggestions', 'gpt-3.5-turbo', duration, true, userId);
 
       return {
         suggestions: suggestions.map((s, index) => ({
@@ -45,19 +57,24 @@ export class AIService {
         }),
       };
     } catch (error) {
-      console.error('AI suggestion error:', error);
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('suggestions', 'gpt-3.5-turbo', duration, false);
+      this.loggingService.logError(error, 'generateSuggestions', userId);
       // Fallback to rule-based suggestions
       return this.getFallbackSuggestions(userId, context, maxResults);
     }
   }
 
   async chat(userId: string, message: string, conversationId?: string) {
+    const startTime = Date.now();
     try {
       // Get message embedding
       const embedding = await this.getEmbedding(message);
 
       // Search for similar past conversations
+      const vectorStartTime = Date.now();
       const similarConversations = await this.vectorService.searchSimilar(embedding, 3);
+      this.monitoringService.recordVectorSearch('search_similar', (Date.now() - vectorStartTime) / 1000);
 
       // Build context from similar conversations
       let contextPrompt = '';
@@ -80,15 +97,22 @@ export class AIService {
         temperature: 0.7,
       });
 
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('chat', 'gpt-3.5-turbo', duration, true);
+
       const reply = response.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
 
       // Store conversation with embedding
       const convId = conversationId || `conv-${Date.now()}`;
+      const storeStartTime = Date.now();
       await this.vectorService.storeEmbedding(convId, embedding, {
         userId,
         lastMessage: message,
         lastResponse: reply,
       });
+      this.monitoringService.recordVectorSearch('store_embedding', (Date.now() - storeStartTime) / 1000);
+
+      this.loggingService.logAiInference('chat', 'gpt-3.5-turbo', duration, true, userId);
 
       return {
         message: reply,
@@ -96,7 +120,9 @@ export class AIService {
         timestamp: new Date(),
       };
     } catch (error) {
-      console.error('AI chat error:', error);
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('chat', 'gpt-3.5-turbo', duration, false);
+      this.loggingService.logError(error, 'chat', userId);
       return {
         message: 'I apologize, but I cannot respond right now. Please try again later.',
         conversationId: conversationId || `conv-${Date.now()}`,
@@ -139,6 +165,7 @@ export class AIService {
   }
 
   async optimizeSchedule(userId: string, tasks: any[], constraints: any = {}) {
+    const startTime = Date.now();
     try {
       const prompt = `Optimize the following schedule for user ${userId}. Tasks: ${JSON.stringify(tasks)}. Constraints: ${JSON.stringify(constraints)}. Provide an optimized schedule with time slots, considering energy levels, commute time, and priorities. Return as JSON with optimized_tasks array.`;
 
@@ -149,12 +176,17 @@ export class AIService {
         temperature: 0.3,
       });
 
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('optimize_schedule', 'gpt-4', duration, true);
+
       const content = response.choices[0]?.message?.content;
       if (!content) {
         throw new Error('No response from OpenAI');
       }
 
       const optimizedSchedule = JSON.parse(content);
+
+      this.loggingService.logAiInference('optimize_schedule', 'gpt-4', duration, true, userId);
 
       return {
         optimizedTasks: optimizedSchedule.optimized_tasks || [],
@@ -165,13 +197,16 @@ export class AIService {
         }),
       };
     } catch (error) {
-      console.error('Schedule optimization error:', error);
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('optimize_schedule', 'gpt-4', duration, false);
+      this.loggingService.logError(error, 'optimizeSchedule', userId);
       // Fallback to simple priority-based sorting
       return this.fallbackScheduleOptimization(tasks, constraints);
     }
   }
 
   async generatePersonalizedRecommendations(userId: string, userData: any) {
+    const startTime = Date.now();
     try {
       const prompt = `Based on user data: ${JSON.stringify(userData)}, generate personalized recommendations for health, productivity, learning, and finance. Consider user's goals, habits, and current status. Return as JSON array with category, priority, and actionable advice.`;
 
@@ -182,12 +217,17 @@ export class AIService {
         temperature: 0.5,
       });
 
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('generate_recommendations', 'gpt-4', duration, true);
+
       const content = response.choices[0]?.message?.content;
       if (!content) {
         throw new Error('No response from OpenAI');
       }
 
       const recommendations = JSON.parse(content);
+
+      this.loggingService.logAiInference('generate_recommendations', 'gpt-4', duration, true, userId);
 
       return {
         recommendations: recommendations.map((rec, index) => ({
@@ -204,7 +244,9 @@ export class AIService {
         }),
       };
     } catch (error) {
-      console.error('Recommendation generation error:', error);
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('generate_recommendations', 'gpt-4', duration, false);
+      this.loggingService.logError(error, 'generatePersonalizedRecommendations', userId);
       return this.fallbackRecommendations(userData);
     }
   }
@@ -259,14 +301,21 @@ export class AIService {
   }
 
   private async getEmbedding(text: string): Promise<number[]> {
+    const startTime = Date.now();
     try {
       const response = await this.openai.embeddings.create({
         model: 'text-embedding-ada-002',
         input: text,
       });
+
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('get_embedding', 'text-embedding-ada-002', duration, true);
+
       return response.data[0].embedding;
     } catch (error) {
-      console.error('Embedding error:', error);
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('get_embedding', 'text-embedding-ada-002', duration, false);
+      this.loggingService.logError(error, 'getEmbedding');
       // Return zero vector as fallback
       return new Array(1536).fill(0);
     }

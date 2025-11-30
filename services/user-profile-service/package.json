@@ -40,7 +40,14 @@
     "class-transformer": "^0.5.1",
     "axios": "^1.6.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "prom-client": "^14.2.0",
+    "winston": "^3.10.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "isomorphic-dompurify": "^1.8.0",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -51,6 +58,7 @@
     "@types/node": "^20.3.1",
     "@types/passport-jwt": "^3.0.9",
     "@types/supertest": "^2.0.12",
+    "@types/cors": "^2.8.13",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.42.0",

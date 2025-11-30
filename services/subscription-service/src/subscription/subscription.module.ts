@@ -4,9 +4,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionService } from './subscription.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CommonModule } from './common.module';
 
 @Module({
   imports: [
+    CommonModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',

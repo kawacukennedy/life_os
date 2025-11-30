@@ -14,9 +14,11 @@ import { NotificationProcessor } from '../auth/notification.processor';
 import { FinanceController } from './finance.controller';
 import { Transaction } from '../transactions/transaction.entity';
 import { JwtStrategy } from '../auth/jwt.strategy';
+import { CommonModule } from './common.module';
 
 @Module({
   imports: [
+    CommonModule,
     TypeOrmModule.forFeature([Transaction]),
     PassportModule,
     JwtModule.register({

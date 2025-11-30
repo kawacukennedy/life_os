@@ -1,12 +1,19 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
 import { MilvusClient } from '@milvus/milvus2-sdk-node';
+import { MonitoringService } from './monitoring.service';
+import { LoggingService } from './logging.service';
 
 @Injectable()
 export class VectorService implements OnModuleInit, OnModuleDestroy {
   private redisClient: RedisClientType;
   private milvusClient: MilvusClient;
   private useMilvus = process.env.USE_MILVUS === 'true';
+
+  constructor(
+    private readonly monitoringService: MonitoringService,
+    private readonly loggingService: LoggingService,
+  ) {}
 
   async onModuleInit() {
     // Initialize Redis
@@ -102,6 +109,7 @@ export class VectorService implements OnModuleInit, OnModuleDestroy {
   }
 
   async storeEmbedding(conversationId: string, embedding: number[], metadata: any) {
+    const startTime = Date.now();
     const timestamp = new Date().toISOString();
 
     if (this.useMilvus) {
@@ -117,22 +125,37 @@ export class VectorService implements OnModuleInit, OnModuleDestroy {
             },
           ],
         });
+
+        this.monitoringService.recordVectorSearch('store_embedding_milvus', (Date.now() - startTime) / 1000);
+        this.loggingService.logVectorOperation('store_embedding', 'conversations', (Date.now() - startTime) / 1000, true);
         return;
       } catch (error) {
-        console.error('Milvus insert error, falling back to Redis:', error);
+        this.monitoringService.recordVectorSearch('store_embedding_milvus', (Date.now() - startTime) / 1000);
+        this.loggingService.logError(error, 'storeEmbedding', metadata?.userId);
       }
     }
 
     // Fallback to Redis
-    const key = `conversation:${conversationId}`;
-    await this.redisClient.json.set(key, '.', {
-      embedding,
-      metadata,
-      timestamp,
-    });
+    try {
+      const key = `conversation:${conversationId}`;
+      await this.redisClient.json.set(key, '.', {
+        embedding,
+        metadata,
+        timestamp,
+      });
+
+      this.monitoringService.recordVectorSearch('store_embedding_redis', (Date.now() - startTime) / 1000);
+      this.loggingService.logVectorOperation('store_embedding', 'conversations', (Date.now() - startTime) / 1000, true);
+    } catch (error) {
+      this.monitoringService.recordVectorSearch('store_embedding_redis', (Date.now() - startTime) / 1000);
+      this.loggingService.logError(error, 'storeEmbedding', metadata?.userId);
+      throw error;
+    }
   }
 
   async searchSimilar(embedding: number[], limit = 5) {
+    const startTime = Date.now();
+
     if (this.useMilvus) {
       try {
         const searchResults = await this.milvusClient.search({
@@ -147,6 +170,9 @@ export class VectorService implements OnModuleInit, OnModuleDestroy {
           output_fields: ['conversation_id', 'metadata', 'timestamp'],
         });
 
+        this.monitoringService.recordVectorSearch('search_similar_milvus', (Date.now() - startTime) / 1000);
+        this.loggingService.logVectorOperation('search_similar', 'conversations', (Date.now() - startTime) / 1000, true);
+
         return searchResults.results.map(result => ({
           id: result.conversation_id,
           score: result.score,
@@ -154,7 +180,8 @@ export class VectorService implements OnModuleInit, OnModuleDestroy {
           timestamp: result.timestamp,
         }));
       } catch (error) {
-        console.error('Milvus search error, falling back to Redis:', error);
+        this.monitoringService.recordVectorSearch('search_similar_milvus', (Date.now() - startTime) / 1000);
+        this.loggingService.logError(error, 'searchSimilar');
       }
     }
 
@@ -168,6 +195,9 @@ export class VectorService implements OnModuleInit, OnModuleDestroy {
         DIALECT: 2,
       });
 
+      this.monitoringService.recordVectorSearch('search_similar_redis', (Date.now() - startTime) / 1000);
+      this.loggingService.logVectorOperation('search_similar', 'conversations', (Date.now() - startTime) / 1000, true);
+
       return results.documents.map(doc => ({
         id: doc.id.split(':')[1], // Remove prefix
         score: parseFloat(doc.value.score),
@@ -175,7 +205,8 @@ export class VectorService implements OnModuleInit, OnModuleDestroy {
         timestamp: doc.value['$.timestamp'],
       }));
     } catch (error) {
-      console.error('Vector search error:', error);
+      this.monitoringService.recordVectorSearch('search_similar_redis', (Date.now() - startTime) / 1000);
+      this.loggingService.logError(error, 'searchSimilar');
       return [];
     }
   }

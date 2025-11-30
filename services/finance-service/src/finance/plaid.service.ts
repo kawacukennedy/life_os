@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } from 'plaid';
+import { MonitoringService } from './monitoring.service';
+import { LoggingService } from './logging.service';
 
 @Injectable()
 export class PlaidService {
   private client: PlaidApi;
 
-  constructor() {
+  constructor(
+    private readonly monitoringService: MonitoringService,
+    private readonly loggingService: LoggingService,
+  ) {
     const configuration = new Configuration({
       basePath: PlaidEnvironments.sandbox, // Change to 'development' or 'production' as needed
       baseOptions: {
@@ -20,6 +25,7 @@ export class PlaidService {
   }
 
   async createLinkToken(userId: string): Promise<any> {
+    const startTime = Date.now();
     try {
       const request = {
         user: {
@@ -32,9 +38,14 @@ export class PlaidService {
       };
 
       const response = await this.client.linkTokenCreate(request);
+
+      this.monitoringService.recordPlaidApiCall('link_token_create', 'POST', Date.now() - startTime, true);
+      this.loggingService.logPlaidApiCall('link_token_create', 'POST', Date.now() - startTime, true, userId);
+
       return response.data;
     } catch (error) {
-      console.error('Error creating Plaid link token:', error);
+      this.monitoringService.recordPlaidApiCall('link_token_create', 'POST', Date.now() - startTime, false);
+      this.loggingService.logError(error, 'createLinkToken', userId);
       throw error;
     }
   }
@@ -54,6 +65,7 @@ export class PlaidService {
   }
 
   async getTransactions(accessToken: string, startDate: string, endDate: string): Promise<any> {
+    const startTime = Date.now();
     try {
       const request = {
         access_token: accessToken,
@@ -65,9 +77,14 @@ export class PlaidService {
       };
 
       const response = await this.client.transactionsGet(request);
+
+      this.monitoringService.recordPlaidApiCall('transactions_get', 'POST', Date.now() - startTime, true);
+      this.loggingService.logPlaidApiCall('transactions_get', 'POST', Date.now() - startTime, true);
+
       return response.data;
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      this.monitoringService.recordPlaidApiCall('transactions_get', 'POST', Date.now() - startTime, false);
+      this.loggingService.logError(error, 'getTransactions');
       throw error;
     }
   }

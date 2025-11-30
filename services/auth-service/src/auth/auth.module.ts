@@ -18,9 +18,11 @@ import { User } from "../users/user.entity";
 import { JwtStrategy } from "./jwt.strategy";
 import { GoogleStrategy } from "./google.strategy";
 import { LocalStrategy } from "./local.strategy";
+import { CommonModule } from "./common.module";
 
 @Module({
   imports: [
+    CommonModule,
     TypeOrmModule.forFeature([User]),
     PassportModule,
     JwtModule.register({
@@ -49,7 +51,6 @@ import { LocalStrategy } from "./local.strategy";
     BackgroundJobService,
     EmailProcessor,
     NotificationProcessor,
-    LoggerService,
     FileService,
     JwtStrategy,
     GoogleStrategy,

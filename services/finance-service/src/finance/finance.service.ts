@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Transaction } from '../transactions/transaction.entity';
 import { PlaidService } from './plaid.service';
+import { MonitoringService } from './monitoring.service';
+import { LoggingService } from './logging.service';
 
 @Injectable()
 export class FinanceService {
@@ -10,23 +12,51 @@ export class FinanceService {
     @InjectRepository(Transaction)
     private transactionsRepository: Repository<Transaction>,
     private plaidService: PlaidService,
+    private readonly monitoringService: MonitoringService,
+    private readonly loggingService: LoggingService,
   ) {}
 
   async getTransactions(userId: string, limit = 50) {
-    return this.transactionsRepository
-      .createQueryBuilder('transaction')
-      .where('transaction.userId = :userId', { userId })
-      .orderBy('transaction.postedAt', 'DESC')
-      .take(limit)
-      .getMany();
+    const startTime = Date.now();
+    try {
+      const transactions = await this.transactionsRepository
+        .createQueryBuilder('transaction')
+        .where('transaction.userId = :userId', { userId })
+        .orderBy('transaction.postedAt', 'DESC')
+        .take(limit)
+        .getMany();
+
+      this.monitoringService.recordDbQuery('query', 'transaction', Date.now() - startTime);
+      this.loggingService.logDatabaseQuery('getTransactions', 'transaction', Date.now() - startTime, true);
+
+      return transactions;
+    } catch (error) {
+      this.monitoringService.recordDbQuery('query', 'transaction', Date.now() - startTime);
+      this.loggingService.logError(error, 'getTransactions', userId);
+      throw error;
+    }
   }
 
   async addTransaction(userId: string, transactionData: Partial<Transaction>) {
-    const transaction = this.transactionsRepository.create({
-      ...transactionData,
-      userId,
-    });
-    return this.transactionsRepository.save(transaction);
+    const startTime = Date.now();
+    try {
+      const transaction = this.transactionsRepository.create({
+        ...transactionData,
+        userId,
+      });
+      const savedTransaction = await this.transactionsRepository.save(transaction);
+
+      this.monitoringService.recordDbQuery('save', 'transaction', Date.now() - startTime);
+      this.monitoringService.recordTransactionProcessing('add_transaction', Date.now() - startTime);
+      this.loggingService.logTransactionOperation('add_transaction', savedTransaction.id.toString(), Date.now() - startTime, true, userId);
+
+      return savedTransaction;
+    } catch (error) {
+      this.monitoringService.recordDbQuery('save', 'transaction', Date.now() - startTime);
+      this.monitoringService.recordTransactionProcessing('add_transaction', Date.now() - startTime);
+      this.loggingService.logError(error, 'addTransaction', userId);
+      throw error;
+    }
   }
 
   async getFinanceSummary(userId: string) {
@@ -66,41 +96,55 @@ export class FinanceService {
   }
 
   async syncPlaidTransactions(userId: string, accessToken: string) {
-    const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days ago
+    const startTime = Date.now();
+    try {
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days ago
 
-    const plaidTransactions = await this.plaidService.getTransactions(accessToken, startDate, endDate);
+      const plaidStartTime = Date.now();
+      const plaidTransactions = await this.plaidService.getTransactions(accessToken, startDate, endDate);
+      this.monitoringService.recordPlaidApiCall('get_transactions', 'POST', Date.now() - plaidStartTime, true);
+      this.loggingService.logPlaidApiCall('get_transactions', 'POST', Date.now() - plaidStartTime, true, userId);
 
-    const savedTransactions = [];
+      const savedTransactions = [];
 
-    for (const transaction of plaidTransactions.transactions) {
-      // Check if transaction already exists
-      const existing = await this.transactionsRepository.findOne({
-        where: { plaidTransactionId: transaction.transaction_id },
-      });
-
-      if (!existing) {
-        const category = transaction.personal_finance_category?.primary ||
-                        this.plaidService.categorizeTransaction(transaction.name, transaction.amount);
-
-        const savedTransaction = await this.addTransaction(userId, {
-          plaidTransactionId: transaction.transaction_id,
-          amount: transaction.amount,
-          description: transaction.name,
-          category,
-          postedAt: new Date(transaction.date),
-          merchantName: transaction.merchant_name,
-          pending: transaction.pending,
+      for (const transaction of plaidTransactions.transactions) {
+        // Check if transaction already exists
+        const existing = await this.transactionsRepository.findOne({
+          where: { plaidTransactionId: transaction.transaction_id },
         });
 
-        savedTransactions.push(savedTransaction);
-      }
-    }
+        if (!existing) {
+          const category = transaction.personal_finance_category?.primary ||
+                          this.plaidService.categorizeTransaction(transaction.name, transaction.amount);
 
-    return {
-      synced: savedTransactions.length,
-      total: plaidTransactions.transactions.length,
-    };
+          const savedTransaction = await this.addTransaction(userId, {
+            plaidTransactionId: transaction.transaction_id,
+            amount: transaction.amount,
+            description: transaction.name,
+            category,
+            postedAt: new Date(transaction.date),
+            merchantName: transaction.merchant_name,
+            pending: transaction.pending,
+          });
+
+          savedTransactions.push(savedTransaction);
+        }
+      }
+
+      this.monitoringService.recordTransactionProcessing('sync_plaid_transactions', Date.now() - startTime);
+      this.loggingService.logTransactionOperation('sync_plaid_transactions', 'bulk', Date.now() - startTime, true, userId);
+
+      return {
+        synced: savedTransactions.length,
+        total: plaidTransactions.transactions.length,
+      };
+    } catch (error) {
+      this.monitoringService.recordPlaidApiCall('get_transactions', 'POST', Date.now() - startTime, false);
+      this.monitoringService.recordTransactionProcessing('sync_plaid_transactions', Date.now() - startTime);
+      this.loggingService.logError(error, 'syncPlaidTransactions', userId);
+      throw error;
+    }
   }
 
   async getSpendingInsights(userId: string) {
