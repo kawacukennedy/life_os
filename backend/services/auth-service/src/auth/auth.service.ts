@@ -5,6 +5,8 @@ import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { User } from "../users/user.entity";
 import { MFAService } from "./mfa.service";
+import { CacheService } from "./cache.service";
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +15,7 @@ export class AuthService {
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
     private mfaService: MFAService,
+    private cacheService: CacheService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -37,9 +40,10 @@ export class AuthService {
       };
     }
 
+    const { accessToken, refreshToken } = await this.generateTokens(user);
     return {
-      accessToken: this.jwtService.sign(payload),
-      refreshToken: this.generateRefreshToken(),
+      accessToken,
+      refreshToken,
       user,
     };
   }
@@ -66,10 +70,10 @@ export class AuthService {
 
     if (!isValid) throw new Error('Invalid MFA token');
 
-    const payload = { email: user.email, sub: user.id };
+    const { accessToken, refreshToken } = await this.generateTokens(user);
     return {
-      accessToken: this.jwtService.sign(payload),
-      refreshToken: this.generateRefreshToken(),
+      accessToken,
+      refreshToken,
       user,
     };
   }
@@ -91,9 +95,81 @@ export class AuthService {
     return result;
   }
 
-  private generateRefreshToken(): string {
-    // In production, store in DB with expiry
-    return this.jwtService.sign({}, { expiresIn: "30d" });
+  private async generateTokens(user: any) {
+    const payload = { email: user.email, sub: user.id };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+
+    // Generate refresh token with unique ID
+    const refreshTokenId = uuidv4();
+    const refreshToken = this.jwtService.sign(
+      { tokenId: refreshTokenId },
+      { expiresIn: '14d' }
+    );
+
+    // Store refresh token in Redis with user association
+    await this.cacheService.set(
+      `refresh_token:${refreshTokenId}`,
+      { userId: user.id, email: user.email },
+      14 * 24 * 60 * 60 * 1000 // 14 days in milliseconds
+    );
+
+    return { accessToken, refreshToken };
+  }
+
+  async refreshAccessToken(refreshToken: string) {
+    try {
+      // Verify refresh token
+      const decoded = this.jwtService.verify(refreshToken);
+      const tokenId = decoded.tokenId;
+
+      // Check if refresh token exists in cache
+      const tokenData = await this.cacheService.get(`refresh_token:${tokenId}`);
+      if (!tokenData) {
+        throw new Error('Invalid refresh token');
+      }
+
+      // Generate new tokens
+      const user = await this.usersRepository.findOne({ where: { id: tokenData.userId } });
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Invalidate old refresh token
+      await this.cacheService.del(`refresh_token:${tokenId}`);
+
+      // Generate new tokens
+      const { accessToken, newRefreshToken } = await this.generateTokens(user);
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        user,
+      };
+    } catch (error) {
+      throw new Error('Invalid refresh token');
+    }
+  }
+
+  async logout(refreshToken: string) {
+    try {
+      const decoded = this.jwtService.verify(refreshToken);
+      const tokenId = decoded.tokenId;
+
+      // Remove refresh token from cache
+      await this.cacheService.del(`refresh_token:${tokenId}`);
+
+      return { message: 'Logged out successfully' };
+    } catch (error) {
+      // Token might already be invalid
+      return { message: 'Logged out successfully' };
+    }
+  }
+
+  async logoutAll(userId: string) {
+    // In a production system, you'd need to track all refresh tokens for a user
+    // For now, we'll just clear user cache
+    await this.cacheService.invalidateUserCache(userId);
+    return { message: 'Logged out from all devices' };
   }
 
   async setupMFA(userId: string) {

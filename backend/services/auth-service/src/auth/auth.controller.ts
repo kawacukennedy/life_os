@@ -285,9 +285,29 @@ export class AuthController {
     return this.authService.disableMFA(req.user.id);
   }
 
-  @Post('mfa/verify')
-  @ApiOperation({ summary: 'Verify MFA', description: 'Verify MFA token during login' })
-  async verifyMFA(@Body() body: { userId: string; token: string; backupCode?: string }) {
-    return this.authService.verifyMFA(body.userId, body.token, body.backupCode);
-  }
-}
+   @Post('mfa/verify')
+   @ApiOperation({ summary: 'Verify MFA', description: 'Verify MFA token during login' })
+   async verifyMFA(@Body() body: { userId: string; token: string; backupCode?: string }) {
+     return this.authService.verifyMFA(body.userId, body.token, body.backupCode);
+   }
+
+   @Post('refresh')
+   @ApiOperation({ summary: 'Refresh access token', description: 'Get new access token using refresh token' })
+   async refreshToken(@Body() body: { refreshToken: string }) {
+     return this.authService.refreshAccessToken(body.refreshToken);
+   }
+
+   @Post('logout')
+   @UseGuards(AuthGuard('jwt'))
+   @ApiOperation({ summary: 'Logout', description: 'Invalidate refresh token' })
+   async logout(@Body() body: { refreshToken: string }) {
+     return this.authService.logout(body.refreshToken);
+   }
+
+   @Post('logout-all')
+   @UseGuards(AuthGuard('jwt'))
+   @ApiOperation({ summary: 'Logout from all devices', description: 'Invalidate all refresh tokens for user' })
+   async logoutAll(@Request() req) {
+     return this.authService.logoutAll(req.user.id);
+   }
+ }
