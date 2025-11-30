@@ -1,0 +1,17 @@
+apiVersion: v2
+name: lifeos
+description: A Helm chart for LifeOS application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - lifeos
+  - ai
+  - productivity
+  - health
+home: https://lifeos.com
+sources:
+  - https://github.com/lifeos/lifeos
+maintainers:
+  - name: LifeOS Team
+    email: team@lifeos.com

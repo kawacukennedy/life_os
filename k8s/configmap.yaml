@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lifeos-config
+  namespace: default
+data:
+  # Service URLs
+  AUTH_SERVICE_URL: "http://auth-service:3001"
+  USER_PROFILE_SERVICE_URL: "http://user-profile-service:3007"
+  AI_SERVICE_URL: "http://ai-inference-service:3009"
+  FINANCE_SERVICE_URL: "http://finance-service:3003"
+  HEALTH_SERVICE_URL: "http://health-service:3002"
+  LEARNING_SERVICE_URL: "http://learning-service:3004"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:3005"
+  SUBSCRIPTION_SERVICE_URL: "http://subscription-service:3006"
+
+  # External APIs
+  STRIPE_WEBHOOK_SECRET: "whsec_test_webhook_secret"
+  PLAID_CLIENT_ID: "test_plaid_client_id"
+  PLAID_SECRET: "test_plaid_secret"
+  GOOGLE_CLIENT_ID: "test_google_client_id"
+  GOOGLE_CLIENT_SECRET: "test_google_client_secret"
+
+  # Application settings
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  JWT_EXPIRES_IN: "15m"
+  REFRESH_TOKEN_EXPIRES_IN: "14d"
+
+  # Database settings
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "lifeos"
+
+  # Redis settings
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # AI settings
+  OPENAI_MODEL: "gpt-4"
+  VECTOR_DIMENSION: "1536"
+  MAX_TOKENS: "1000"
+
+  # Monitoring
+  PROMETHEUS_PORT: "9090"
+  GRAFANA_PORT: "3000"

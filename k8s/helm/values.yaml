@@ -1,0 +1,166 @@
+# Default values for lifeos.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Frontend settings
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: lifeos/frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# API Gateway settings
+apiGateway:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: lifeos/api-gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Auth Service settings
+authService:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: lifeos/auth-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3001
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# User Profile Service settings
+userProfileService:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: lifeos/user-profile-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3007
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# AI Inference Service settings
+aiInferenceService:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: lifeos/ai-inference-service
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3009
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Database settings
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "changeMe123"
+    username: "lifeos"
+    password: "changeMe123"
+    database: "lifeos"
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+# Redis settings
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+
+# Ingress settings
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: api.lifeos.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: app.lifeos.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: lifeos-tls
+      hosts:
+        - api.lifeos.com
+        - app.lifeos.com
+
+# Monitoring settings
+prometheus:
+  enabled: false
+grafana:
+  enabled: false
+
+# External services
+externalServices:
+  stripe:
+    enabled: true
+    secretName: payment-secrets
+  plaid:
+    enabled: true
+    secretName: plaid-secrets
+  openai:
+    enabled: true
+    secretName: ai-secrets
