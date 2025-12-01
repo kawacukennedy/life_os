@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { google } from 'googleapis';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { Email } from './email.entity';
 
 @Injectable()
@@ -11,6 +13,7 @@ export class EmailService {
   constructor(
     @InjectRepository(Email)
     private emailRepository: Repository<Email>,
+    private httpService: HttpService,
   ) {}
 
   async syncEmails(userId: string, accessToken: string): Promise<Email[]> {
@@ -133,11 +136,30 @@ export class EmailService {
       throw new Error('Email not found');
     }
 
-    // Call AI service for summarization
-    // For now, return a simple summary
-    const summary = `Summary of email from ${email.sender} about ${email.subject}`;
-    await this.emailRepository.update(emailId, { summary });
-    return summary;
+    try {
+      const aiResponse = await firstValueFrom(
+        this.httpService.post(
+          `${process.env.AI_SERVICE_URL || 'http://localhost:3006'}/ai/summarize`,
+          {
+            userId: email.userId,
+            content: `Subject: ${email.subject}\nFrom: ${email.sender}\nBody: ${email.body}`,
+            type: 'email',
+          },
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          },
+        ),
+      );
+
+      const summary = aiResponse.data.summary || `Summary of email from ${email.sender} about ${email.subject}`;
+      await this.emailRepository.update(emailId, { summary });
+      return summary;
+    } catch (error) {
+      // Fallback to simple summary
+      const summary = `Summary of email from ${email.sender} about ${email.subject}`;
+      await this.emailRepository.update(emailId, { summary });
+      return summary;
+    }
   }
 
   async suggestActions(emailId: string): Promise<any[]> {
@@ -146,15 +168,36 @@ export class EmailService {
       throw new Error('Email not found');
     }
 
-    // Call AI service for action suggestions
-    // For now, return mock suggestions
-    const suggestions = [
-      { type: 'reply', description: 'Reply to sender' },
-      { type: 'schedule', description: 'Schedule follow-up' },
-      { type: 'archive', description: 'Archive email' },
-    ];
+    try {
+      const aiResponse = await firstValueFrom(
+        this.httpService.post(
+          `${process.env.AI_SERVICE_URL || 'http://localhost:3006'}/ai/suggest-actions`,
+          {
+            userId: email.userId,
+            context: `Email from ${email.sender} about ${email.subject}: ${email.body.substring(0, 500)}`,
+            type: 'email',
+          },
+        ),
+      );
 
-    await this.emailRepository.update(emailId, { suggestedActions: suggestions });
-    return suggestions;
+      const suggestions = aiResponse.data.suggestions || [
+        { type: 'reply', description: 'Reply to sender' },
+        { type: 'schedule', description: 'Schedule follow-up' },
+        { type: 'archive', description: 'Archive email' },
+      ];
+
+      await this.emailRepository.update(emailId, { suggestedActions: suggestions });
+      return suggestions;
+    } catch (error) {
+      // Fallback to mock suggestions
+      const suggestions = [
+        { type: 'reply', description: 'Reply to sender' },
+        { type: 'schedule', description: 'Schedule follow-up' },
+        { type: 'archive', description: 'Archive email' },
+      ];
+
+      await this.emailRepository.update(emailId, { suggestedActions: suggestions });
+      return suggestions;
+    }
   }
 }
