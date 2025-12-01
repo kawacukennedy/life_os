@@ -12,6 +12,7 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
+import { PrivacyService } from './privacy.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SanitizationValidationPipe } from '../common/validation.pipe';
 import {
@@ -26,7 +27,10 @@ import {
 @Controller('profile')
 @UsePipes(new SanitizationValidationPipe())
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(
+    private readonly profileService: ProfileService,
+    private readonly privacyService: PrivacyService,
+  ) {}
 
   @Get(':userId')
   @UseGuards(JwtAuthGuard)
@@ -103,10 +107,35 @@ export class ProfileController {
      return { hasPermission };
    }
 
-   @Delete(':userId')
-   @UseGuards(JwtAuthGuard)
-   async deleteProfile(@Param('userId') userId: string) {
-     await this.profileService.deleteProfile(userId);
-     return { message: 'Profile deleted successfully' };
-   }
+    @Delete(':userId')
+    @UseGuards(JwtAuthGuard)
+    async deleteProfile(@Param('userId') userId: string) {
+      await this.profileService.deleteProfile(userId);
+      return { message: 'Profile deleted successfully' };
+    }
+
+    // GDPR Privacy Endpoints
+    @Get(':userId/gdpr-export')
+    @UseGuards(JwtAuthGuard)
+    async exportUserData(@Param('userId') userId: string) {
+      return this.privacyService.exportUserData(userId);
+    }
+
+    @Delete(':userId/gdpr-delete')
+    @UseGuards(JwtAuthGuard)
+    async deleteUserData(@Param('userId') userId: string) {
+      return this.privacyService.deleteUserData(userId);
+    }
+
+    @Post(':userId/gdpr-anonymize')
+    @UseGuards(JwtAuthGuard)
+    async anonymizeUserData(@Param('userId') userId: string) {
+      return this.privacyService.anonymizeUserData(userId);
+    }
+
+    @Get(':userId/gdpr-retention')
+    @UseGuards(JwtAuthGuard)
+    async getDataRetentionInfo(@Param('userId') userId: string) {
+      return this.privacyService.getDataRetentionInfo(userId);
+    }
  }
