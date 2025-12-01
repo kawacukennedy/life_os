@@ -7,6 +7,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { BullModule } from '@nestjs/bull';
 import { HealthService } from './health.service';
 import { FitbitService } from './fitbit.service';
+import { AppleHealthService } from './apple-health.service';
 import { CacheService } from '../auth/cache.service';
 import { BackgroundJobService } from '../auth/background-job.service';
 import { EmailProcessor } from '../auth/email.processor';
@@ -38,15 +39,16 @@ import { JwtStrategy } from '../auth/jwt.strategy';
     ),
   ],
   controllers: [HealthController],
-  providers: [
-    HealthService,
-    FitbitService,
-    CacheService,
-    BackgroundJobService,
-    EmailProcessor,
-    NotificationProcessor,
-    JwtStrategy,
-  ],
+   providers: [
+     HealthService,
+     FitbitService,
+     AppleHealthService,
+     CacheService,
+     BackgroundJobService,
+     EmailProcessor,
+     NotificationProcessor,
+     JwtStrategy,
+   ],
   exports: [HealthService, CacheService, BackgroundJobService],
 })
 export class HealthModule {}

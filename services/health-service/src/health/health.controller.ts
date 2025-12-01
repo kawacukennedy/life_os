@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/co
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { HealthService } from './health.service';
 import { FitbitService } from './fitbit.service';
+import { AppleHealthService, AppleHealthData } from './apple-health.service';
 
 @Controller('health')
 @UseGuards(JwtAuthGuard)
@@ -9,6 +10,7 @@ export class HealthController {
   constructor(
     private readonly healthService: HealthService,
     private readonly fitbitService: FitbitService,
+    private readonly appleHealthService: AppleHealthService,
   ) {}
 
   @Get('summary')
@@ -69,5 +71,29 @@ export class HealthController {
   @Get('fitbit/sync')
   async syncFitbitData(@Query('accessToken') accessToken: string, @Query('userId') userId: string) {
     return this.fitbitService.syncHealthData(accessToken, userId);
+  }
+
+  // Apple Health Integration
+  @Post('apple-health/sync')
+  async syncAppleHealthData(@Body() body: { userId: string; healthData: AppleHealthData[] }) {
+    await this.appleHealthService.processHealthData(body.healthData);
+    return { message: 'Apple Health data synced successfully' };
+  }
+
+  @Get('apple-health/data')
+  async getAppleHealthData(
+    @Query('userId') userId: string,
+    @Query('type') type?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.appleHealthService.getHealthData(userId, type, start, end);
+  }
+
+  @Get('apple-health/latest')
+  async getLatestAppleHealthVitals(@Query('userId') userId: string) {
+    return this.appleHealthService.getLatestVitals(userId);
   }
 }
