@@ -4,6 +4,7 @@ import { PassportModule } from "@nestjs/passport";
 import { JwtModule } from "@nestjs/jwt";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { CacheModule } from "@nestjs/cache-manager";
+import { redisStore } from "cache-manager-redis-yet";
 import { BullModule } from "@nestjs/bull";
 import { AuthService } from "./auth.service";
 import { GoogleCalendarService } from "./google-calendar.service";
@@ -22,11 +23,17 @@ import { CommonModule } from "./common.module";
 import { SecurityService } from "./security.service";
 import { SecurityMiddleware } from "./security.middleware";
 import { SecurityEvent } from "./security-event.entity";
+import { PerformanceService } from "./performance.service";
+import { EventEntity } from "./event.entity";
+import { EventStoreService } from "./event-store.service";
+import { Tenant } from "./tenant.entity";
+import { TenantService } from "./tenant.service";
+import { TenantMiddleware } from "./tenant.middleware";
 
 @Module({
   imports: [
     CommonModule,
-    TypeOrmModule.forFeature([User, SecurityEvent]),
+    TypeOrmModule.forFeature([User, SecurityEvent, EventEntity, Tenant]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || "secret",
@@ -36,9 +43,18 @@ import { SecurityEvent } from "./security-event.entity";
       ttl: 60,
       limit: 10,
     }),
-    CacheModule.register({
-      ttl: 300000, // 5 minutes
-      max: 1000,
+    CacheModule.registerAsync({
+      useFactory: async () => ({
+        store: await redisStore({
+          socket: {
+            host: process.env.REDIS_HOST || 'localhost',
+            port: parseInt(process.env.REDIS_PORT) || 6379,
+          },
+          password: process.env.REDIS_PASSWORD,
+          database: parseInt(process.env.REDIS_DB) || 0,
+          ttl: 300000, // 5 minutes default TTL
+        }),
+      }),
     }),
     BullModule.registerQueue(
       { name: "email" },
@@ -56,6 +72,9 @@ import { SecurityEvent } from "./security-event.entity";
     NotificationProcessor,
     FileService,
     SecurityService,
+    PerformanceService,
+    EventStoreService,
+    TenantService,
     JwtStrategy,
     GoogleStrategy,
     LocalStrategy,

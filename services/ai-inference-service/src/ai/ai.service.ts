@@ -29,7 +29,26 @@ export class AIService {
   async generateSuggestions(userId: string, context: string, maxResults = 5) {
     const startTime = Date.now();
     try {
-      const prompt = `Based on the user's context: "${context}", provide ${maxResults} personalized suggestions for improving productivity, health, or daily life. Format as JSON array with id, type, confidence, and payload.`;
+      // Generate embedding for the context
+      const contextEmbedding = await this.generateEmbedding(context);
+
+      // Retrieve relevant conversation history using RAG
+      const relevantHistory = await this.vectorService.searchSimilar(contextEmbedding, 3);
+
+      // Build enhanced context with retrieved information
+      let enhancedContext = context;
+      if (relevantHistory.length > 0) {
+        const historyText = relevantHistory
+          .map(h => h.metadata?.content || '')
+          .filter(content => content.length > 0)
+          .join('\n');
+
+        if (historyText) {
+          enhancedContext = `${context}\n\nRelevant conversation history:\n${historyText}`;
+        }
+      }
+
+      const prompt = `Based on the user's context: "${enhancedContext}", provide ${maxResults} personalized suggestions for improving productivity, health, or daily life. Consider the user's conversation history for more relevant suggestions. Format as JSON array with id, type, confidence, and payload.`;
 
       const response = await this.openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -103,6 +122,20 @@ export class AIService {
       });
       await this.messageRepository.save(userMessage);
 
+      // Generate and store embedding for user message
+      try {
+        const userEmbedding = await this.generateEmbedding(message);
+        await this.vectorService.storeEmbedding(conversation.id, userEmbedding, {
+          userId,
+          messageId: userMessage.id,
+          role: MessageRole.USER,
+          content: message.substring(0, 500),
+          timestamp: userMessage.createdAt,
+        });
+      } catch (error) {
+        this.loggingService.logError(error, 'chat_user_embedding', userId);
+      }
+
       // Get conversation history (last 10 messages for context)
       const recentMessages = await this.messageRepository.find({
         where: { conversationId: conversation.id },
@@ -110,11 +143,32 @@ export class AIService {
         take: 10,
       });
 
+      // Use RAG to retrieve relevant context from conversation history
+      let ragContext = '';
+      try {
+        const messageEmbedding = await this.generateEmbedding(message);
+        const relevantHistory = await this.vectorService.searchSimilar(messageEmbedding, 3);
+
+        if (relevantHistory.length > 0) {
+          const historyText = relevantHistory
+            .filter(h => h.metadata?.conversationId !== conversation.id) // Exclude current conversation
+            .map(h => h.metadata?.content || '')
+            .filter(content => content.length > 0)
+            .join('\n');
+
+          if (historyText) {
+            ragContext = `\n\nRelevant context from previous conversations:\n${historyText}`;
+          }
+        }
+      } catch (error) {
+        this.loggingService.logError(error, 'chat_rag_context', userId);
+      }
+
       // Build messages array for OpenAI
       const messages = [
         {
           role: 'system',
-          content: 'You are LifeOS, an AI personal assistant for productivity and wellbeing. Help the user optimize their daily life, health, finances, and learning. Be helpful, concise, and proactive. Maintain context from the conversation history.',
+          content: `You are LifeOS, an AI personal assistant for productivity and wellbeing. Help the user optimize their daily life, health, finances, and learning. Be helpful, concise, and proactive. Maintain context from the conversation history.${ragContext}`,
         },
         ...recentMessages.map(msg => ({
           role: msg.role,
@@ -141,6 +195,20 @@ export class AIService {
         content: reply,
       });
       await this.messageRepository.save(assistantMessage);
+
+      // Generate and store embedding for assistant message
+      try {
+        const assistantEmbedding = await this.generateEmbedding(reply);
+        await this.vectorService.storeEmbedding(conversation.id, assistantEmbedding, {
+          userId,
+          messageId: assistantMessage.id,
+          role: MessageRole.ASSISTANT,
+          content: reply.substring(0, 500),
+          timestamp: assistantMessage.createdAt,
+        });
+      } catch (error) {
+        this.loggingService.logError(error, 'chat_assistant_embedding', userId);
+      }
 
       // Update conversation title if it's the first exchange
       if (conversation.messages.length === 0) {
@@ -410,7 +478,7 @@ Return JSON with:
     };
   }
 
-  private async getEmbedding(text: string): Promise<number[]> {
+  private async generateEmbedding(text: string): Promise<number[]> {
     const startTime = Date.now();
     try {
       const response = await this.openai.embeddings.create({
@@ -419,13 +487,13 @@ Return JSON with:
       });
 
       const duration = (Date.now() - startTime) / 1000;
-      this.monitoringService.recordAiInference('get_embedding', 'text-embedding-ada-002', duration, true);
+      this.monitoringService.recordAiInference('generate_embedding', 'text-embedding-ada-002', duration, true);
 
       return response.data[0].embedding;
     } catch (error) {
       const duration = (Date.now() - startTime) / 1000;
-      this.monitoringService.recordAiInference('get_embedding', 'text-embedding-ada-002', duration, false);
-      this.loggingService.logError(error, 'getEmbedding');
+      this.monitoringService.recordAiInference('generate_embedding', 'text-embedding-ada-002', duration, false);
+      this.loggingService.logError(error, 'generateEmbedding');
       // Return zero vector as fallback
       return new Array(1536).fill(0);
     }

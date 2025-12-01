@@ -1,0 +1,127 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lifeos-global-ingress
+  namespace: lifeos
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/geoip-country: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns.alpha.kubernetes.io/hostname: "*.lifeos.com"
+spec:
+  tls:
+  - hosts:
+    - api.lifeos.com
+    - app.lifeos.com
+    - "*.lifeos.com"
+    secretName: lifeos-tls
+  rules:
+  - host: api.lifeos.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+  - host: app.lifeos.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lifeos-regional-ingress-us
+  namespace: lifeos-us
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/geoip-country: "US,CA,MX"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - us.api.lifeos.com
+    secretName: lifeos-us-tls
+  rules:
+  - host: us.api.lifeos.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lifeos-regional-ingress-eu
+  namespace: lifeos-eu
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/geoip-country: "GB,DE,FR,IT,ES,CH,AT,BE,NL,DK,SE,NO,FI"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      # GDPR compliance headers
+      add_header x-data-processing-region "EU" always;
+      add_header x-gdpr-compliant "true" always;
+spec:
+  tls:
+  - hosts:
+    - eu.api.lifeos.com
+    secretName: lifeos-eu-tls
+  rules:
+  - host: eu.api.lifeos.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lifeos-regional-ingress-asia
+  namespace: lifeos-asia
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/geoip-country: "JP,KR,CN,SG,HK,TW,IN"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - asia.api.lifeos.com
+    secretName: lifeos-asia-tls
+  rules:
+  - host: asia.api.lifeos.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80

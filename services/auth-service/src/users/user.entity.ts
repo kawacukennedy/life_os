@@ -4,7 +4,10 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+import { Tenant } from "../auth/tenant.entity";
 
 @Entity()
 export class User {
@@ -34,6 +37,13 @@ export class User {
 
   @Column({ default: "user" })
   role: string;
+
+  @Column({ name: 'tenant_id' })
+  tenantId: string;
+
+  @ManyToOne(() => Tenant, tenant => tenant.users)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 
   // Integration tokens
   @Column({ type: "json", nullable: true })

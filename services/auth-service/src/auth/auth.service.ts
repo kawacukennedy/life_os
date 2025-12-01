@@ -6,6 +6,8 @@ import * as bcrypt from "bcrypt";
 import { User } from "../users/user.entity";
 import { MonitoringService } from "./monitoring.service";
 import { LoggerService } from "./logger.service";
+import { EventStoreService } from "./event-store.service";
+import { UserAggregate } from "./user.aggregate";
 
 @Injectable()
 export class AuthService {
@@ -15,6 +17,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly monitoringService: MonitoringService,
     private readonly loggerService: LoggerService,
+    private readonly eventStore: EventStoreService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -26,6 +29,16 @@ export class AuthService {
       if (user && (await bcrypt.compare(password, user.passwordHash))) {
         this.monitoringService.recordAuthAttempt('password', true);
         this.loggerService.logAuthEvent('login_success', { email }, user.id);
+
+        // Record login event using event sourcing
+        try {
+          const userAggregate = await UserAggregate.load(this.eventStore, user.id);
+          userAggregate.recordLogin();
+          await userAggregate.commit();
+        } catch (error) {
+          this.loggerService.logError(error, 'record_login_event', user.id);
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { passwordHash, ...result } = user;
         return result;
