@@ -63,4 +63,29 @@ export class TaskController {
   getTasksByPriority(@Param('userId') userId: string, @Param('priority') priority: TaskPriority): Promise<Task[]> {
     return this.taskService.getTasksByPriority(userId, priority);
   }
+
+  @Get(':id/can-start')
+  canStartTask(@Param('id') id: string): Promise<boolean> {
+    return this.taskService.canStartTask(id);
+  }
+
+  @Get('user/:userId/blocked')
+  getBlockedTasks(@Param('userId') userId: string): Promise<Task[]> {
+    return this.taskService.getBlockedTasks(userId);
+  }
+
+  @Get('user/:userId/available')
+  getAvailableTasks(@Param('userId') userId: string): Promise<Task[]> {
+    return this.taskService.getAvailableTasks(userId);
+  }
+
+  @Post(':id/dependencies/:dependencyId')
+  addDependency(@Param('id') id: string, @Param('dependencyId') dependencyId: string): Promise<Task> {
+    return this.taskService.addDependency(id, dependencyId);
+  }
+
+  @Delete(':id/dependencies/:dependencyId')
+  removeDependency(@Param('id') id: string, @Param('dependencyId') dependencyId: string): Promise<Task> {
+    return this.taskService.removeDependency(id, dependencyId);
+  }
 }

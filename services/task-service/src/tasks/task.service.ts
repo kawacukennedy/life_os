@@ -95,4 +95,63 @@ export class TaskService {
       order: { dueAt: 'ASC' },
     });
   }
+
+  async canStartTask(taskId: string): Promise<boolean> {
+    const task = await this.findOne(taskId);
+    if (!task.dependencies || task.dependencies.length === 0) {
+      return true;
+    }
+
+    const dependencyTasks = await this.taskRepository
+      .createQueryBuilder('task')
+      .where('task.id IN (:...ids)', { ids: task.dependencies })
+      .getMany();
+
+    return dependencyTasks.every(dep => dep.status === TaskStatus.COMPLETED);
+  }
+
+  async getBlockedTasks(userId: string): Promise<Task[]> {
+    const tasks = await this.getTasksByUser(userId);
+    const blockedTasks: Task[] = [];
+
+    for (const task of tasks) {
+      if (task.status !== TaskStatus.COMPLETED && !(await this.canStartTask(task.id))) {
+        blockedTasks.push(task);
+      }
+    }
+
+    return blockedTasks;
+  }
+
+  async getAvailableTasks(userId: string): Promise<Task[]> {
+    const tasks = await this.getTasksByUser(userId);
+    const availableTasks: Task[] = [];
+
+    for (const task of tasks) {
+      if (task.status !== TaskStatus.COMPLETED && await this.canStartTask(task.id)) {
+        availableTasks.push(task);
+      }
+    }
+
+    return availableTasks;
+  }
+
+  async addDependency(taskId: string, dependencyId: string): Promise<Task> {
+    const task = await this.findOne(taskId);
+    if (!task.dependencies) {
+      task.dependencies = [];
+    }
+    if (!task.dependencies.includes(dependencyId)) {
+      task.dependencies.push(dependencyId);
+    }
+    return this.taskRepository.save(task);
+  }
+
+  async removeDependency(taskId: string, dependencyId: string): Promise<Task> {
+    const task = await this.findOne(taskId);
+    if (task.dependencies) {
+      task.dependencies = task.dependencies.filter(id => id !== dependencyId);
+    }
+    return this.taskRepository.save(task);
+  }
 }
