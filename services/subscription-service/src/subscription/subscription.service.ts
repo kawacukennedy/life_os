@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { PrismaClient } from '@prisma/client';
 import Stripe from 'stripe';
 import { MonitoringService } from './monitoring.service';
 import { LoggingService } from './logging.service';
+import { SubscriptionTier, TierType } from './tier.entity';
 
 @Injectable()
 export class SubscriptionService {
@@ -10,6 +13,8 @@ export class SubscriptionService {
   private stripe: Stripe;
 
   constructor(
+    @InjectRepository(SubscriptionTier)
+    private tierRepository: Repository<SubscriptionTier>,
     private readonly monitoringService: MonitoringService,
     private readonly loggingService: LoggingService,
   ) {
@@ -328,5 +333,103 @@ export class SubscriptionService {
       where: { stripeSubscriptionId: subscription.id },
       data: { status: 'canceled' },
     });
+  }
+
+  // Tier management methods
+  async createTier(tierData: Partial<SubscriptionTier>): Promise<SubscriptionTier> {
+    const tier = this.tierRepository.create(tierData);
+    return this.tierRepository.save(tier);
+  }
+
+  async getTiers(): Promise<SubscriptionTier[]> {
+    return this.tierRepository.find({
+      where: { isActive: true },
+      order: { price: 'ASC' },
+    });
+  }
+
+  async getTierByType(type: TierType): Promise<SubscriptionTier> {
+    const tier = await this.tierRepository.findOne({ where: { type, isActive: true } });
+    if (!tier) {
+      throw new Error('Tier not found');
+    }
+    return tier;
+  }
+
+  async updateTier(id: string, updateData: Partial<SubscriptionTier>): Promise<SubscriptionTier> {
+    await this.tierRepository.update(id, updateData);
+    return this.tierRepository.findOne({ where: { id } });
+  }
+
+  async getUserTierLimits(userId: string): Promise<any> {
+    // Get user's current subscription
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { userId, status: 'active' },
+    });
+
+    if (!subscription) {
+      // Return free tier limits
+      const freeTier = await this.getTierByType(TierType.FREE);
+      return freeTier.features;
+    }
+
+    // Map plan to tier type
+    const tierType = this.mapPlanToTierType(subscription.plan);
+    const tier = await this.getTierByType(tierType);
+
+    return tier.features;
+  }
+
+  async checkUserLimits(userId: string, resource: string, currentUsage: number): Promise<boolean> {
+    const limits = await this.getUserTierLimits(userId);
+    const limit = limits[resource];
+
+    if (limit === undefined) return true; // No limit defined
+    return currentUsage < limit;
+  }
+
+  private mapPlanToTierType(plan: string): TierType {
+    const planMap = {
+      'free': TierType.FREE,
+      'basic': TierType.BASIC,
+      'premium': TierType.PRO,
+      'enterprise': TierType.ENTERPRISE,
+    };
+    return planMap[plan] || TierType.FREE;
+  }
+
+  async upgradeSubscription(userId: string, newTierType: TierType): Promise<any> {
+    const currentSub = await this.prisma.subscription.findFirst({
+      where: { userId, status: 'active' },
+    });
+
+    if (!currentSub) {
+      throw new Error('No active subscription found');
+    }
+
+    const newTier = await this.getTierByType(newTierType);
+    const stripePriceId = newTier.stripePriceIds?.monthly; // Default to monthly
+
+    if (!stripePriceId) {
+      throw new Error('No Stripe price configured for this tier');
+    }
+
+    // Update subscription in Stripe
+    const subscription = await this.stripe.subscriptions.retrieve(currentSub.stripeSubscriptionId!);
+    await this.stripe.subscriptions.update(currentSub.stripeSubscriptionId!, {
+      items: [{
+        id: subscription.items.data[0].id,
+        price: stripePriceId,
+      }],
+      proration_behavior: 'create_prorations',
+    });
+
+    // Update local record
+    await this.prisma.subscription.update({
+      where: { id: currentSub.id },
+      data: { plan: newTierType },
+    });
+
+    return { success: true, newTier: newTierType };
   }
 }

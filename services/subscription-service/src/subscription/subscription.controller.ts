@@ -109,4 +109,40 @@ export class SubscriptionController {
     const signature = req.headers['stripe-signature'] as string;
     return this.stripeService.handleWebhook(req.rawBody, signature);
   }
+
+  // Tier management endpoints
+  @Post('tiers')
+  async createTier(@Body() body: Partial<SubscriptionTier>) {
+    return this.subscriptionService.createTier(body);
+  }
+
+  @Get('tiers')
+  async getTiers() {
+    return this.subscriptionService.getTiers();
+  }
+
+  @Get('tiers/:type')
+  async getTierByType(@Param('type') type: string) {
+    return this.subscriptionService.getTierByType(type as any);
+  }
+
+  @Put('tiers/:id')
+  async updateTier(@Param('id') id: string, @Body() body: Partial<SubscriptionTier>) {
+    return this.subscriptionService.updateTier(id, body);
+  }
+
+  @Get('user/limits')
+  @UseGuards(JwtAuthGuard)
+  async getUserTierLimits(@Req() req: any) {
+    return this.subscriptionService.getUserTierLimits(req.user.id);
+  }
+
+  @Post('upgrade')
+  @UseGuards(JwtAuthGuard)
+  async upgradeSubscription(
+    @Body() body: { newTierType: string },
+    @Req() req: any,
+  ) {
+    return this.subscriptionService.upgradeSubscription(req.user.id, body.newTierType as any);
+  }
 }

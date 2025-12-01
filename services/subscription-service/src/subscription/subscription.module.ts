@@ -1,15 +1,18 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionService } from './subscription.service';
 import { StripeService } from './stripe.service';
+import { SubscriptionTier } from './tier.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CommonModule } from './common.module';
 
 @Module({
   imports: [
     CommonModule,
+    TypeOrmModule.forFeature([SubscriptionTier]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',
