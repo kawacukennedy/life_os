@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { HealthService } from './health.service';
 import { FitbitService } from './fitbit.service';
 import { AppleHealthService, AppleHealthData } from './apple-health.service';
+import { HealthAnomalyDetectorService } from './health-anomaly-detector.service';
 
 @Controller('health')
 @UseGuards(JwtAuthGuard)
@@ -11,6 +12,7 @@ export class HealthController {
     private readonly healthService: HealthService,
     private readonly fitbitService: FitbitService,
     private readonly appleHealthService: AppleHealthService,
+    private readonly anomalyDetector: HealthAnomalyDetectorService,
   ) {}
 
   @Get('summary')
@@ -95,5 +97,18 @@ export class HealthController {
   @Get('apple-health/latest')
   async getLatestAppleHealthVitals(@Query('userId') userId: string) {
     return this.appleHealthService.getLatestVitals(userId);
+  }
+
+  // Health Anomaly Detection
+  @Post('anomalies/detect')
+  async detectAnomaly(
+    @Body() body: { userId: string; vitalType: string; value: number },
+  ) {
+    return this.anomalyDetector.detectAnomalies(body.userId, body.vitalType, body.value);
+  }
+
+  @Get('anomalies/user/:userId')
+  async detectAnomaliesForUser(@Param('userId') userId: string) {
+    return this.anomalyDetector.detectAnomaliesForUser(userId);
   }
 }
