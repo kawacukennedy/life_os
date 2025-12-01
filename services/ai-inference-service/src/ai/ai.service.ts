@@ -1,14 +1,22 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import OpenAI from 'openai';
 import { VectorService } from './vector.service';
 import { MonitoringService } from './monitoring.service';
 import { LoggingService } from './logging.service';
+import { Conversation } from './conversation.entity';
+import { Message, MessageRole } from './message.entity';
 
 @Injectable()
 export class AIService {
   private openai: OpenAI;
 
   constructor(
+    @InjectRepository(Conversation)
+    private conversationRepository: Repository<Conversation>,
+    @InjectRepository(Message)
+    private messageRepository: Repository<Message>,
     private readonly vectorService: VectorService,
     private readonly monitoringService: MonitoringService,
     private readonly loggingService: LoggingService,
@@ -68,22 +76,96 @@ export class AIService {
   async chat(userId: string, message: string, conversationId?: string) {
     const startTime = Date.now();
     try {
-      // Get message embedding
-      const embedding = await this.getEmbedding(message);
+      let conversation: Conversation;
 
-      // Search for similar past conversations
-      const vectorStartTime = Date.now();
-      const similarConversations = await this.vectorService.searchSimilar(embedding, 3);
-      this.monitoringService.recordVectorSearch('search_similar', (Date.now() - vectorStartTime) / 1000);
-
-      // Build context from similar conversations
-      let contextPrompt = '';
-      if (similarConversations.length > 0) {
-        contextPrompt = 'Based on similar past conversations:\n' +
-          similarConversations.map(conv =>
-            `- Previous context: ${conv.metadata?.lastMessage || 'N/A'}`
-          ).join('\n') + '\n\n';
+      if (conversationId) {
+        conversation = await this.conversationRepository.findOne({
+          where: { id: conversationId, userId },
+          relations: ['messages'],
+        });
+        if (!conversation) {
+          throw new Error('Conversation not found');
+        }
+      } else {
+        // Create new conversation
+        conversation = this.conversationRepository.create({
+          userId,
+          title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+        });
+        await this.conversationRepository.save(conversation);
       }
+
+      // Add user message to conversation
+      const userMessage = this.messageRepository.create({
+        conversationId: conversation.id,
+        role: MessageRole.USER,
+        content: message,
+      });
+      await this.messageRepository.save(userMessage);
+
+      // Get conversation history (last 10 messages for context)
+      const recentMessages = await this.messageRepository.find({
+        where: { conversationId: conversation.id },
+        order: { createdAt: 'ASC' },
+        take: 10,
+      });
+
+      // Build messages array for OpenAI
+      const messages = [
+        {
+          role: 'system',
+          content: 'You are LifeOS, an AI personal assistant for productivity and wellbeing. Help the user optimize their daily life, health, finances, and learning. Be helpful, concise, and proactive. Maintain context from the conversation history.',
+        },
+        ...recentMessages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+      ];
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages,
+        max_tokens: 300,
+        temperature: 0.7,
+      });
+
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('chat', 'gpt-3.5-turbo', duration, true);
+
+      const reply = response.choices[0]?.message?.content || 'I apologize, but I cannot respond right now.';
+
+      // Add assistant message to conversation
+      const assistantMessage = this.messageRepository.create({
+        conversationId: conversation.id,
+        role: MessageRole.ASSISTANT,
+        content: reply,
+      });
+      await this.messageRepository.save(assistantMessage);
+
+      // Update conversation title if it's the first exchange
+      if (conversation.messages.length === 0) {
+        conversation.title = `${message.substring(0, 30)}...`;
+        await this.conversationRepository.save(conversation);
+      }
+
+      this.loggingService.logAiInference('chat', 'gpt-3.5-turbo', duration, true, userId);
+
+      return {
+        message: reply,
+        conversationId: conversation.id,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('chat', 'gpt-3.5-turbo', duration, false);
+      this.loggingService.logError(error, 'chat', userId);
+      return {
+        message: 'I apologize, but I cannot respond right now. Please try again later.',
+        conversationId: conversationId || `conv-${Date.now()}`,
+        timestamp: new Date(),
+      };
+    }
+  }
 
       const systemPrompt = `You are LifeOS, an AI personal assistant for productivity and wellbeing. Help the user optimize their daily life, health, finances, and learning. Be helpful, concise, and proactive. ${contextPrompt}`;
 
@@ -318,6 +400,89 @@ export class AIService {
       this.loggingService.logError(error, 'getEmbedding');
       // Return zero vector as fallback
       return new Array(1536).fill(0);
+    }
+  }
+
+  async getConversations(userId: string): Promise<Conversation[]> {
+    return this.conversationRepository.find({
+      where: { userId },
+      relations: ['messages'],
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
+  async getConversation(conversationId: string): Promise<Conversation | null> {
+    return this.conversationRepository.findOne({
+      where: { id: conversationId },
+      relations: ['messages'],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async deleteConversation(conversationId: string, userId: string): Promise<void> {
+    const conversation = await this.conversationRepository.findOne({
+      where: { id: conversationId, userId },
+    });
+    if (conversation) {
+      await this.conversationRepository.remove(conversation);
+    }
+  }
+
+  async summarize(userId: string, content: string, type: string): Promise<string> {
+    const startTime = Date.now();
+    try {
+      const prompt = `Summarize the following ${type}: "${content}". Provide a concise summary in 2-3 sentences.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 150,
+        temperature: 0.3,
+      });
+
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('summarize', 'gpt-3.5-turbo', duration, true);
+
+      return response.choices[0]?.message?.content || 'Summary not available';
+    } catch (error) {
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('summarize', 'gpt-3.5-turbo', duration, false);
+      return `Summary of ${type}: ${content.substring(0, 100)}...`;
+    }
+  }
+
+  async suggestActions(userId: string, context: string, type: string): Promise<any[]> {
+    const startTime = Date.now();
+    try {
+      const prompt = `Based on the following ${type} context: "${context}", suggest 3-5 actionable next steps or quick actions the user could take. Return as JSON array with type and description fields.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 300,
+        temperature: 0.5,
+      });
+
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('suggest_actions', 'gpt-3.5-turbo', duration, true);
+
+      const content = response.choices[0]?.message?.content;
+      if (content) {
+        return JSON.parse(content);
+      }
+      return [
+        { type: 'view', description: 'Review the content' },
+        { type: 'share', description: 'Share with others' },
+        { type: 'archive', description: 'Save for later' },
+      ];
+    } catch (error) {
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('suggest_actions', 'gpt-3.5-turbo', duration, false);
+      return [
+        { type: 'view', description: 'Review the content' },
+        { type: 'share', description: 'Share with others' },
+        { type: 'archive', description: 'Save for later' },
+      ];
     }
   }
 }
