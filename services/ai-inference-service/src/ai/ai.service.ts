@@ -485,4 +485,71 @@ export class AIService {
       ];
     }
   }
+
+  async generateProactiveSuggestions(userId: string, userData: any): Promise<any[]> {
+    const startTime = Date.now();
+    try {
+      const prompt = `Analyze the user's data and patterns: ${JSON.stringify(userData)}. Identify opportunities for proactive suggestions that would help the user. Consider:
+      - Health patterns (sleep, activity, vitals)
+      - Productivity patterns (task completion, time management)
+      - Financial patterns (spending, savings goals)
+      - Learning patterns (progress, goals)
+      - Calendar patterns (scheduling, meetings)
+
+      Return 3-5 proactive suggestions as JSON array with type, title, description, and urgency (low/medium/high). Focus on actionable insights.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 600,
+        temperature: 0.4,
+      });
+
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('proactive_suggestions', 'gpt-4', duration, true);
+
+      const content = response.choices[0]?.message?.content;
+      if (content) {
+        const suggestions = JSON.parse(content);
+        return suggestions.map((s, index) => ({
+          id: `proactive-${Date.now()}-${index}`,
+          type: s.type,
+          title: s.title,
+          description: s.description,
+          urgency: s.urgency || 'medium',
+          createdAt: new Date(),
+        }));
+      }
+
+      return this.fallbackProactiveSuggestions(userData);
+    } catch (error) {
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('proactive_suggestions', 'gpt-4', duration, false);
+      this.loggingService.logError(error, 'generateProactiveSuggestions', userId);
+      return this.fallbackProactiveSuggestions(userData);
+    }
+  }
+
+  private fallbackProactiveSuggestions(userData: any): any[] {
+    const suggestions = [
+      {
+        id: 'fallback-proactive-1',
+        type: 'health',
+        title: 'Health Check Reminder',
+        description: 'It\'s been a few days since your last health sync. Consider updating your vitals.',
+        urgency: 'low',
+        createdAt: new Date(),
+      },
+      {
+        id: 'fallback-proactive-2',
+        type: 'productivity',
+        title: 'Task Review',
+        description: 'You have several pending tasks. Consider prioritizing them for today.',
+        urgency: 'medium',
+        createdAt: new Date(),
+      },
+    ];
+
+    return suggestions;
+  }
 }

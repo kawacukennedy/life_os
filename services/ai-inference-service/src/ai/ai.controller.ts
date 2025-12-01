@@ -50,4 +50,9 @@ export class AIController {
     async suggestActions(@Body() body: { userId: string; context: string; type: string }) {
       return { suggestions: await this.aiService.suggestActions(body.userId, body.context, body.type) };
     }
+
+    @Post('proactive-suggestions')
+    async getProactiveSuggestions(@Body() body: { userId: string; userData: any }) {
+      return { suggestions: await this.aiService.generateProactiveSuggestions(body.userId, body.userData) };
+    }
   }
