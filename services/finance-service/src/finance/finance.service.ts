@@ -37,6 +37,16 @@ export class FinanceService {
     }
   }
 
+  async getTransactionById(transactionId: string): Promise<Transaction> {
+    const transaction = await this.transactionsRepository.findOne({
+      where: { id: transactionId },
+    });
+    if (!transaction) {
+      throw new Error('Transaction not found');
+    }
+    return transaction;
+  }
+
   async addTransaction(userId: string, transactionData: Partial<Transaction>) {
     const startTime = Date.now();
     try {

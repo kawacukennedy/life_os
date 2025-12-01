@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Query, UseGuards, Headers } from '@nestjs/
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FinanceService } from './finance.service';
 import { PlaidService } from './plaid.service';
+import { TransactionCategorizerService } from './transaction-categorizer.service';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard)
@@ -9,6 +10,7 @@ export class FinanceController {
   constructor(
     private readonly financeService: FinanceService,
     private readonly plaidService: PlaidService,
+    private readonly categorizerService: TransactionCategorizerService,
   ) {}
 
   @Get('summary')
@@ -82,5 +84,24 @@ export class FinanceController {
   async handleWebhook(@Body() body: any, @Headers() headers: any) {
     await this.plaidService.handleWebhook(body, headers);
     return { received: true };
+  }
+
+  // Transaction Categorization
+  @Post('transactions/categorize')
+  async categorizeTransaction(@Body() body: { transactionId: string }) {
+    const transaction = await this.financeService.getTransactionById(body.transactionId);
+    return this.categorizerService.categorizeTransaction(transaction);
+  }
+
+  @Post('transactions/batch-categorize')
+  async batchCategorizeTransactions(@Body() body: { userId: string }) {
+    await this.categorizerService.batchCategorizeTransactions(body.userId);
+    return { message: 'Batch categorization completed' };
+  }
+
+  @Post('categorizer/retrain')
+  async retrainCategorizationModel(@Body() body: { userId: string }) {
+    await this.categorizerService.retrainCategorizationModel(body.userId);
+    return { message: 'Model retraining initiated' };
   }
 }

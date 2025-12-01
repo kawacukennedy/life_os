@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HttpModule } from '@nestjs/axios';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -7,6 +8,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { BullModule } from '@nestjs/bull';
 import { FinanceService } from './finance.service';
 import { PlaidService } from './plaid.service';
+import { TransactionCategorizerService } from './transaction-categorizer.service';
 import { CacheService } from '../auth/cache.service';
 import { BackgroundJobService } from '../auth/background-job.service';
 import { EmailProcessor } from '../auth/email.processor';
@@ -20,6 +22,7 @@ import { CommonModule } from './common.module';
   imports: [
     CommonModule,
     TypeOrmModule.forFeature([Transaction]),
+    HttpModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',
@@ -40,15 +43,16 @@ import { CommonModule } from './common.module';
     ),
   ],
   controllers: [FinanceController],
-  providers: [
-    FinanceService,
-    PlaidService,
-    CacheService,
-    BackgroundJobService,
-    EmailProcessor,
-    NotificationProcessor,
-    JwtStrategy,
-  ],
+   providers: [
+     FinanceService,
+     PlaidService,
+     TransactionCategorizerService,
+     CacheService,
+     BackgroundJobService,
+     EmailProcessor,
+     NotificationProcessor,
+     JwtStrategy,
+   ],
   exports: [FinanceService, CacheService, BackgroundJobService],
 })
 export class FinanceModule {}
