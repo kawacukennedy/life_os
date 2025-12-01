@@ -60,4 +60,13 @@ export class EmailController {
   suggestActions(@Param('id') id: string): Promise<any[]> {
     return this.emailService.suggestActions(id);
   }
+
+  @Post(':id/actions/:actionType')
+  executeQuickAction(
+    @Param('id') id: string,
+    @Param('actionType') actionType: string,
+    @Body() body: { accessToken: string; userId: string; additionalData?: any },
+  ): Promise<any> {
+    return this.emailService.executeQuickAction(id, actionType, body.accessToken, body.userId, body.additionalData);
+  }
 }

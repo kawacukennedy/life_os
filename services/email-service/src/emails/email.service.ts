@@ -200,4 +200,66 @@ export class EmailService {
       return suggestions;
     }
   }
+
+  async executeQuickAction(
+    emailId: string,
+    actionType: string,
+    accessToken: string,
+    userId: string,
+    additionalData?: any,
+  ): Promise<any> {
+    const email = await this.emailRepository.findOne({ where: { id: emailId } });
+    if (!email) {
+      throw new Error('Email not found');
+    }
+
+    const auth = new google.auth.OAuth2();
+    auth.setCredentials({ access_token: accessToken });
+
+    switch (actionType) {
+      case 'archive':
+        await this.gmail.users.messages.modify({
+          userId: 'me',
+          id: email.messageId,
+          auth,
+          requestBody: {
+            removeLabelIds: ['INBOX'],
+          },
+        });
+        return this.archiveEmail(emailId);
+
+      case 'reply':
+        const replyBody = additionalData?.body || 'Thank you for your email.';
+        await this.gmail.users.messages.send({
+          userId: 'me',
+          auth,
+          requestBody: {
+            threadId: email.threadId,
+            raw: Buffer.from(
+              `To: ${email.sender}\nSubject: Re: ${email.subject}\n\n${replyBody}`,
+            ).toString('base64'),
+          },
+        });
+        return { success: true, message: 'Reply sent' };
+
+      case 'schedule':
+        // Create a task for follow-up
+        await firstValueFrom(
+          this.httpService.post(
+            `${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks`,
+            {
+              userId,
+              title: `Follow up on email: ${email.subject}`,
+              description: `Follow up on email from ${email.sender}`,
+              dueAt: additionalData?.dueAt || new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+              context: 'email_followup',
+            },
+          ),
+        );
+        return { success: true, message: 'Follow-up task created' };
+
+      default:
+        throw new Error(`Unknown action type: ${actionType}`);
+    }
+  }
 }
