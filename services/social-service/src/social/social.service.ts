@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { Connection, ConnectionStatus } from './connection.entity';
 import { SharedGoal, GoalStatus } from './shared-goal.entity';
 
@@ -11,6 +13,7 @@ export class SocialService {
     private connectionRepository: Repository<Connection>,
     @InjectRepository(SharedGoal)
     private sharedGoalRepository: Repository<SharedGoal>,
+    private httpService: HttpService,
   ) {}
 
   // Connection methods
@@ -161,5 +164,84 @@ export class SocialService {
     }
 
     return this.sharedGoalRepository.save(goal);
+  }
+
+  async getRecommendedConnections(userId: string, userProfile: any): Promise<any[]> {
+    try {
+      // Get potential connections (users not already connected)
+      const existingConnections = await this.getConnections(userId);
+      const connectedUserIds = existingConnections.map(conn =>
+        conn.requesterId === userId ? conn.addresseeId : conn.requesterId
+      );
+
+      // This would need a way to get other users' profiles
+      // For now, return mock recommendations
+      const recommendations = [
+        {
+          userId: 'mock-user-1',
+          name: 'Sarah Johnson',
+          reason: 'Shares similar health goals',
+          similarity: 0.85,
+        },
+        {
+          userId: 'mock-user-2',
+          name: 'Mike Chen',
+          reason: 'Similar productivity patterns',
+          similarity: 0.72,
+        },
+      ];
+
+      return recommendations.filter(rec => !connectedUserIds.includes(rec.userId));
+    } catch (error) {
+      console.error('Failed to get recommended connections:', error);
+      return [];
+    }
+  }
+
+  async getRecommendedGoals(userId: string, userProfile: any): Promise<SharedGoal[]> {
+    try {
+      // Get user's current goals and interests
+      const userGoals = await this.getSharedGoals(userId);
+      const userGoalTypes = [...new Set(userGoals.map(g => g.type))];
+
+      // Find public goals that match user's interests but they haven't joined
+      const publicGoals = await this.getPublicGoals();
+      const recommendedGoals = publicGoals.filter(goal =>
+        userGoalTypes.includes(goal.type) && !goal.participantIds.includes(userId)
+      );
+
+      // Sort by relevance (number of participants, recency)
+      return recommendedGoals
+        .sort((a, b) => {
+          const aScore = a.participantIds.length + (Date.now() - a.createdAt.getTime()) / (1000 * 60 * 60 * 24); // days since creation
+          const bScore = b.participantIds.length + (Date.now() - b.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+          return bScore - aScore;
+        })
+        .slice(0, 5);
+    } catch (error) {
+      console.error('Failed to get recommended goals:', error);
+      return [];
+    }
+  }
+
+  async getSimilarUsers(userId: string, userProfile: any): Promise<any[]> {
+    try {
+      // Use AI to find similar users based on profile data
+      const aiResponse = await firstValueFrom(
+        this.httpService.post(
+          `${process.env.AI_SERVICE_URL || 'http://localhost:3006'}/ai/find-similar-users`,
+          {
+            userId,
+            userProfile,
+            maxResults: 10,
+          },
+        ),
+      );
+
+      return aiResponse.data.similarUsers || [];
+    } catch (error) {
+      console.error('Failed to get similar users:', error);
+      return [];
+    }
   }
 }

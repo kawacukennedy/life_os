@@ -80,4 +80,20 @@ export class SocialController {
   completeGoal(@Param('id') id: string, @Body('userId') userId: string): Promise<SharedGoal> {
     return this.socialService.completeGoal(id, userId);
   }
+
+  // Recommendation endpoints
+  @Get('recommendations/connections/:userId')
+  getRecommendedConnections(@Param('userId') userId: string, @Query('profile') profile: any): Promise<any[]> {
+    return this.socialService.getRecommendedConnections(userId, profile);
+  }
+
+  @Get('recommendations/goals/:userId')
+  getRecommendedGoals(@Param('userId') userId: string, @Query('profile') profile: any): Promise<SharedGoal[]> {
+    return this.socialService.getRecommendedGoals(userId, profile);
+  }
+
+  @Get('recommendations/similar-users/:userId')
+  getSimilarUsers(@Param('userId') userId: string, @Query('profile') profile: any): Promise<any[]> {
+    return this.socialService.getSimilarUsers(userId, profile);
+  }
 }
