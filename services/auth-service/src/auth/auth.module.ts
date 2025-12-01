@@ -19,11 +19,14 @@ import { JwtStrategy } from "./jwt.strategy";
 import { GoogleStrategy } from "./google.strategy";
 import { LocalStrategy } from "./local.strategy";
 import { CommonModule } from "./common.module";
+import { SecurityService } from "./security.service";
+import { SecurityMiddleware } from "./security.middleware";
+import { SecurityEvent } from "./security-event.entity";
 
 @Module({
   imports: [
     CommonModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, SecurityEvent]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || "secret",
@@ -52,6 +55,7 @@ import { CommonModule } from "./common.module";
     EmailProcessor,
     NotificationProcessor,
     FileService,
+    SecurityService,
     JwtStrategy,
     GoogleStrategy,
     LocalStrategy,
@@ -62,6 +66,7 @@ import { CommonModule } from "./common.module";
     BackgroundJobService,
     LoggerService,
     FileService,
+    SecurityService,
   ],
 })
 export class AuthModule {}

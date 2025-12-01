@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
 import { User } from "./users/user.entity";
+import { SecurityEvent } from "./auth/security-event.entity";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -8,7 +9,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME || "postgres",
   password: process.env.DB_PASSWORD || "password",
   database: process.env.DB_NAME || "lifeos",
-  entities: [User],
+  entities: [User, SecurityEvent],
   migrations: ["src/migrations/*.ts"],
   synchronize: false,
 });

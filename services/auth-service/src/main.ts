@@ -2,9 +2,13 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { SecurityMiddleware } from "./auth/security.middleware";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Apply security middleware globally
+  app.use(new SecurityMiddleware().use.bind(new SecurityMiddleware()));
 
   // Swagger setup
   const config = new DocumentBuilder()
