@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Task, TaskStatus, TaskPriority } from './task.entity';
+import { Task, TaskStatus, TaskPriority, RecurrenceType } from './task.entity';
 
 @Injectable()
 export class TaskService {
@@ -153,5 +153,74 @@ export class TaskService {
       task.dependencies = task.dependencies.filter(id => id !== dependencyId);
     }
     return this.taskRepository.save(task);
+  }
+
+  async completeTask(taskId: string): Promise<Task> {
+    const task = await this.findOne(taskId);
+    task.status = TaskStatus.COMPLETED;
+
+    const updatedTask = await this.taskRepository.save(task);
+
+    // If recurring, create next instance
+    if (task.isRecurring && (!task.recurrenceEndAt || task.dueAt < task.recurrenceEndAt)) {
+      await this.createNextRecurringTask(task);
+    }
+
+    return updatedTask;
+  }
+
+  private async createNextRecurringTask(task: Task): Promise<void> {
+    const nextDueAt = this.calculateNextDueDate(task.dueAt, task.recurrenceType, task.recurrenceInterval);
+
+    if (!nextDueAt || (task.recurrenceEndAt && nextDueAt > task.recurrenceEndAt)) {
+      return;
+    }
+
+    const nextTask = this.taskRepository.create({
+      userId: task.userId,
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      dueAt: nextDueAt,
+      durationMinutes: task.durationMinutes,
+      isRecurring: true,
+      recurrenceType: task.recurrenceType,
+      recurrenceInterval: task.recurrenceInterval,
+      recurrenceEndAt: task.recurrenceEndAt,
+      tags: task.tags,
+      metadata: task.metadata,
+    });
+
+    await this.taskRepository.save(nextTask);
+  }
+
+  private calculateNextDueDate(currentDueAt: Date, type: RecurrenceType, interval: number): Date | null {
+    const nextDate = new Date(currentDueAt);
+
+    switch (type) {
+      case RecurrenceType.DAILY:
+        nextDate.setDate(nextDate.getDate() + interval);
+        break;
+      case RecurrenceType.WEEKLY:
+        nextDate.setDate(nextDate.getDate() + (interval * 7));
+        break;
+      case RecurrenceType.MONTHLY:
+        nextDate.setMonth(nextDate.getMonth() + interval);
+        break;
+      case RecurrenceType.YEARLY:
+        nextDate.setFullYear(nextDate.getFullYear() + interval);
+        break;
+      default:
+        return null;
+    }
+
+    return nextDate;
+  }
+
+  async getRecurringTasks(userId: string): Promise<Task[]> {
+    return this.taskRepository.find({
+      where: { userId, isRecurring: true },
+      order: { dueAt: 'ASC' },
+    });
   }
 }

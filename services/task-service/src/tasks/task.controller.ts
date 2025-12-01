@@ -88,4 +88,14 @@ export class TaskController {
   removeDependency(@Param('id') id: string, @Param('dependencyId') dependencyId: string): Promise<Task> {
     return this.taskService.removeDependency(id, dependencyId);
   }
+
+  @Post(':id/complete')
+  completeTask(@Param('id') id: string): Promise<Task> {
+    return this.taskService.completeTask(id);
+  }
+
+  @Get('user/:userId/recurring')
+  getRecurringTasks(@Param('userId') userId: string): Promise<Task[]> {
+    return this.taskService.getRecurringTasks(userId);
+  }
 }
