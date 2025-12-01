@@ -249,13 +249,38 @@ export class AIService {
   async optimizeSchedule(userId: string, tasks: any[], constraints: any = {}) {
     const startTime = Date.now();
     try {
-      const prompt = `Optimize the following schedule for user ${userId}. Tasks: ${JSON.stringify(tasks)}. Constraints: ${JSON.stringify(constraints)}. Provide an optimized schedule with time slots, considering energy levels, commute time, and priorities. Return as JSON with optimized_tasks array.`;
+      // Enhanced prompt with constraint satisfaction approach
+      const prompt = `You are a constraint satisfaction solver for schedule optimization. Given:
+Tasks: ${JSON.stringify(tasks)}
+Constraints: ${JSON.stringify(constraints)}
+
+Apply these optimization rules:
+1. Priority ordering: High > Medium > Low
+2. Time constraints: Respect due dates, duration limits
+3. Energy levels: Schedule demanding tasks during peak energy times
+4. Dependencies: Ensure dependent tasks are sequenced properly
+5. Breaks: Insert short breaks between tasks
+6. Commute time: Account for travel between locations
+7. Daily limits: Don't exceed reasonable daily capacity
+
+Use a hybrid approach:
+- First, apply heuristic rules for initial placement
+- Then, use local search to optimize within constraints
+- Consider time budget of 500ms for computation
+
+Return JSON with:
+{
+  "optimized_tasks": [array of tasks with assigned time slots],
+  "reasoning": "explanation of optimization decisions",
+  "constraints_satisfied": [list of satisfied constraints],
+  "tradeoffs": [any compromises made]
+}`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4', // Use GPT-4 for complex optimization
+        model: 'gpt-4',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.3,
+        max_tokens: 1200,
+        temperature: 0.2, // Lower temperature for more deterministic results
       });
 
       const duration = (Date.now() - startTime) / 1000;
@@ -272,10 +297,13 @@ export class AIService {
 
       return {
         optimizedTasks: optimizedSchedule.optimized_tasks || [],
-        reasoning: optimizedSchedule.reasoning || 'Optimized based on priorities and constraints',
+        reasoning: optimizedSchedule.reasoning || 'Optimized using constraint satisfaction',
+        constraintsSatisfied: optimizedSchedule.constraints_satisfied || [],
+        tradeoffs: optimizedSchedule.tradeoffs || [],
         modelMeta: JSON.stringify({
           model: 'gpt-4',
           tokens_used: response.usage?.total_tokens || 0,
+          approach: 'constraint_satisfaction',
         }),
       };
     } catch (error) {
