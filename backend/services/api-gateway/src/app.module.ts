@@ -8,6 +8,7 @@ import { GatewayModule } from './gateway/gateway.module';
 import { UserModule } from './graphql/user/user.module';
 import { TaskModule } from './graphql/task/task.module';
 import { AIModule } from './graphql/ai/ai.module';
+import { HealthModule } from './graphql/health/health.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AIModule } from './graphql/ai/ai.module';
     UserModule,
     TaskModule,
     AIModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
