@@ -1,10 +1,14 @@
 import { Controller, Post, Get, Put, Delete, Body, Param, UseGuards, RawBodyRequest, Req } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
+import { StripeService } from './stripe.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('subscription')
 export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly stripeService: StripeService,
+  ) {}
 
   @Post('create')
   @UseGuards(JwtAuthGuard)
@@ -56,8 +60,53 @@ export class SubscriptionController {
   }
 
   @Post('webhook')
-  async handleWebhook(@Req() req: RawBodyRequest<any>) {
-    const event = req.body;
-    return this.subscriptionService.handleWebhook(event);
+  async handleWebhook(@Req() req: RawBodyRequest<Request>) {
+    return this.subscriptionService.handleWebhook(req);
+  }
+
+  // Stripe-specific endpoints
+  @Post('stripe/customer')
+  @UseGuards(JwtAuthGuard)
+  async createStripeCustomer(
+    @Body() body: { email: string; name?: string },
+    @Req() req: any,
+  ) {
+    return this.stripeService.createCustomer(req.user.id, body.email, body.name);
+  }
+
+  @Post('stripe/subscription')
+  @UseGuards(JwtAuthGuard)
+  async createStripeSubscription(
+    @Body() body: { customerId: string; priceId: string },
+    @Req() req: any,
+  ) {
+    return this.stripeService.createSubscription(body.customerId, body.priceId, req.user.id);
+  }
+
+  @Post('stripe/checkout')
+  @UseGuards(JwtAuthGuard)
+  async createCheckoutSession(
+    @Body() body: { customerId: string; priceId: string; successUrl: string; cancelUrl: string },
+  ) {
+    return this.stripeService.createCheckoutSession(
+      body.customerId,
+      body.priceId,
+      body.successUrl,
+      body.cancelUrl,
+    );
+  }
+
+  @Get('stripe/prices')
+  async getStripePrices() {
+    return this.stripeService.getPrices();
+  }
+
+  @Post('stripe/webhook')
+  async handleStripeWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Body() body: any,
+  ) {
+    const signature = req.headers['stripe-signature'] as string;
+    return this.stripeService.handleWebhook(req.rawBody, signature);
   }
 }
