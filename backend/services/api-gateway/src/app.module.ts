@@ -9,6 +9,7 @@ import { UserModule } from './graphql/user/user.module';
 import { TaskModule } from './graphql/task/task.module';
 import { AIModule } from './graphql/ai/ai.module';
 import { HealthModule } from './graphql/health/health.module';
+import { FinanceModule } from './graphql/finance/finance.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { HealthModule } from './graphql/health/health.module';
     TaskModule,
     AIModule,
     HealthModule,
+    FinanceModule,
   ],
 })
 export class AppModule {}

@@ -72,29 +72,127 @@ export class FinanceService {
   async getFinanceSummary(userId: string) {
     const transactions = await this.getTransactions(userId, 1000);
 
-    const totalIncome = transactions
+    // Calculate monthly metrics (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const monthlyTransactions = transactions.filter(t => t.postedAt >= thirtyDaysAgo);
+
+    const monthlyIncome = monthlyTransactions
       .filter(t => t.amount > 0)
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const totalExpenses = transactions
+    const monthlyExpenses = monthlyTransactions
       .filter(t => t.amount < 0)
       .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
 
-    const balance = totalIncome - totalExpenses;
+    const totalBalance = transactions
+      .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const categoryBreakdown = transactions.reduce((acc, t) => {
-      const category = t.category;
+    const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
+
+    // Category breakdown
+    const categoryTotals = monthlyTransactions.reduce((acc, t) => {
+      const category = t.category || 'Uncategorized';
       if (!acc[category]) acc[category] = 0;
       acc[category] += Math.abs(Number(t.amount));
       return acc;
     }, {} as Record<string, number>);
 
+    const totalSpent = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0);
+    const topCategories = Object.entries(categoryTotals)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: totalSpent > 0 ? (amount / totalSpent) * 100 : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+
+    // Recent transactions
+    const recentTransactions = transactions
+      .slice(0, 20)
+      .map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: Math.abs(Number(t.amount)),
+        category: t.category || 'Uncategorized',
+        date: t.postedAt.toISOString(),
+        type: t.amount > 0 ? 'income' : 'expense',
+      }));
+
+    // Budget alerts (mock for now - would be based on user-defined budgets)
+    const budgetAlerts = topCategories
+      .filter(cat => cat.percentage > 30)
+      .map(cat => ({
+        id: `alert-${cat.category}`,
+        category: cat.category,
+        budgetAmount: cat.amount * 1.2, // Mock budget
+        spentAmount: cat.amount,
+        percentage: cat.percentage,
+        message: `You've spent ${cat.percentage.toFixed(1)}% of your budget on ${cat.category}`,
+      }));
+
     return {
-      totalIncome,
-      totalExpenses,
-      balance,
-      categoryBreakdown,
+      userId,
+      totalBalance,
+      monthlyIncome,
+      monthlyExpenses,
+      savingsRate,
+      topCategories,
+      recentTransactions,
+      budgetAlerts,
     };
+  }
+
+  async getFinanceInsights(userId: string) {
+    const summary = await this.getFinanceSummary(userId);
+    const insights = [];
+
+    if (summary.savingsRate < 10) {
+      insights.push({
+        id: 'low-savings-rate',
+        type: 'warning',
+        title: 'Low Savings Rate',
+        description: `Your current savings rate is ${summary.savingsRate.toFixed(1)}%. Aim for at least 20% to build financial security.`,
+        actionable: true,
+        createdAt: new Date(),
+      });
+    }
+
+    if (summary.monthlyExpenses > summary.monthlyIncome * 0.9) {
+      insights.push({
+        id: 'high-expenses',
+        type: 'warning',
+        title: 'High Expense Ratio',
+        description: 'Your expenses are over 90% of your income. Consider reviewing your spending habits.',
+        actionable: true,
+        createdAt: new Date(),
+      });
+    }
+
+    const topCategory = summary.topCategories[0];
+    if (topCategory && topCategory.percentage > 40) {
+      insights.push({
+        id: 'high-category-spending',
+        type: 'suggestion',
+        title: `High ${topCategory.category} Spending`,
+        description: `${topCategory.category} accounts for ${topCategory.percentage.toFixed(1)}% of your expenses. Consider optimizing this category.`,
+        actionable: true,
+        createdAt: new Date(),
+      });
+    }
+
+    if (summary.totalBalance < 1000) {
+      insights.push({
+        id: 'low-balance',
+        type: 'suggestion',
+        title: 'Build Emergency Fund',
+        description: 'Consider building an emergency fund of 3-6 months of expenses.',
+        actionable: true,
+        createdAt: new Date(),
+      });
+    }
+
+    return { insights };
   }
 
   async createPlaidLinkToken(userId: string) {

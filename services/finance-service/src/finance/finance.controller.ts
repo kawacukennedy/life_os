@@ -66,8 +66,8 @@ export class FinanceController {
   }
 
   @Get('insights')
-  async getSpendingInsights(@Query('userId') userId: string) {
-    return this.financeService.getSpendingInsights(userId);
+  async getFinanceInsights(@Query('userId') userId: string) {
+    return this.financeService.getFinanceInsights(userId);
   }
 
   @Get('plaid/balances')
