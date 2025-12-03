@@ -31,6 +31,7 @@ export class GatewayService {
       notification: 'http://localhost:3005',
       task: 'http://localhost:3006',
       user: 'http://localhost:3007',
+      task: 'http://localhost:3006',
       ai: 'http://localhost:3008',
     };
     return services[service as keyof typeof services] || '';
