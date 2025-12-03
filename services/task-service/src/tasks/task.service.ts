@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { Task, TaskStatus, TaskPriority, RecurrenceType } from './task.entity';
 
 @Injectable()
@@ -8,6 +10,7 @@ export class TaskService {
   constructor(
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(taskData: Partial<Task>): Promise<Task> {
@@ -21,6 +24,14 @@ export class TaskService {
     limit?: number;
     offset?: number;
   }): Promise<Task[]> {
+    const cacheKey = `tasks:${userId}:${JSON.stringify(options)}`;
+
+    // Try to get from cache first
+    const cachedTasks = await this.cacheManager.get<Task[]>(cacheKey);
+    if (cachedTasks) {
+      return cachedTasks;
+    }
+
     const query = this.taskRepository
       .createQueryBuilder('task')
       .where('task.userId = :userId', { userId });
@@ -45,7 +56,12 @@ export class TaskService {
          .addOrderBy('task.dueAt', 'ASC')
          .addOrderBy('task.createdAt', 'DESC');
 
-    return query.getMany();
+    const tasks = await query.getMany();
+
+    // Cache the result for 5 minutes
+    await this.cacheManager.set(cacheKey, tasks, 300000);
+
+    return tasks;
   }
 
   async findOne(id: string): Promise<Task> {
@@ -60,7 +76,12 @@ export class TaskService {
   }
 
   async update(id: string, updateData: Partial<Task>): Promise<Task> {
+    const task = await this.findOne(id);
     await this.taskRepository.update(id, updateData);
+
+    // Invalidate cache for this user
+    await this.invalidateUserCache(task.userId);
+
     return this.findOne(id);
   }
 
@@ -215,6 +236,12 @@ export class TaskService {
     }
 
     return nextDate;
+  }
+
+  private async invalidateUserCache(userId: string): Promise<void> {
+    // Invalidate all cache keys for this user
+    // This is a simple implementation - in production, you might want to use Redis key patterns
+    await this.cacheManager.reset();
   }
 
   async getRecurringTasks(userId: string): Promise<Task[]> {
