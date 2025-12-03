@@ -92,10 +92,32 @@ export class TaskService {
     }
   }
 
+  async getTasks(userId: string) {
+    const tasks = await this.taskRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      tasks: tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueAt: task.dueAt?.toISOString() || null,
+        durationMinutes: task.durationMinutes,
+        createdAt: task.createdAt.toISOString(),
+        completedAt: task.completedAt?.toISOString() || null,
+        tags: task.tags || [],
+      })),
+      totalCount: tasks.length,
+    };
+  }
+
   async getTasksByUser(userId: string): Promise<Task[]> {
     return this.taskRepository.find({
       where: { userId },
-      relations: ['subtasks'],
       order: { createdAt: 'DESC' },
     });
   }

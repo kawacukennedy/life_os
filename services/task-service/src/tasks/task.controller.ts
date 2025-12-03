@@ -98,4 +98,25 @@ export class TaskController {
   getRecurringTasks(@Param('userId') userId: string): Promise<Task[]> {
     return this.taskService.getRecurringTasks(userId);
   }
+
+  @Get('summary/:userId')
+  getTasks(@Param('userId') userId: string) {
+    return this.taskService.getTasks(userId);
+  }
+
+  @Post('create')
+  createTask(@Body() body: { userId: string; input: any }) {
+    return this.taskService.create({
+      ...body.input,
+      userId: body.userId,
+    });
+  }
+
+  @Patch('status/:taskId')
+  updateTaskStatus(@Param('taskId') taskId: string, @Body() body: { status: string }) {
+    return this.taskService.update(taskId, {
+      status: body.status as TaskStatus,
+      completedAt: body.status === 'completed' ? new Date() : null,
+    });
+  }
 }

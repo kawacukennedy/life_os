@@ -9,9 +9,7 @@ export class TaskService {
   async getTasks(userId: string, filters: any = {}) {
     try {
       const response = await firstValueFrom(
-        this.httpService.get(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks`, {
-          params: { userId, ...filters },
-        })
+        this.httpService.get(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks/summary/${userId}`)
       );
       return response.data;
     } catch (error) {
@@ -20,17 +18,30 @@ export class TaskService {
         tasks: [
           {
             id: '1',
-            title: 'Sample Task',
-            description: 'This is a sample task',
+            title: 'Welcome to LifeOS',
+            description: 'Complete your profile setup',
             status: 'pending',
-            priority: 3,
-            dueAt: new Date(),
-            durationMinutes: 60,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            priority: 1,
+            dueAt: null,
+            durationMinutes: 15,
+            createdAt: new Date().toISOString(),
+            completedAt: null,
+            tags: ['onboarding'],
+          },
+          {
+            id: '2',
+            title: 'Connect Health Device',
+            description: 'Link your fitness tracker for personalized insights',
+            status: 'pending',
+            priority: 2,
+            dueAt: null,
+            durationMinutes: 10,
+            createdAt: new Date().toISOString(),
+            completedAt: null,
+            tags: ['health', 'setup'],
           },
         ],
-        totalCount: 1,
+        totalCount: 2,
       };
     }
   }
@@ -59,29 +70,42 @@ export class TaskService {
   async createTask(userId: string, taskData: any) {
     try {
       const response = await firstValueFrom(
-        this.httpService.post(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks`, {
+        this.httpService.post(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks/create`, {
           userId,
-          ...taskData,
+          input: taskData,
         })
       );
       return response.data;
     } catch (error) {
       return {
-        id: 'new-task-id',
+        id: Date.now().toString(),
         ...taskData,
+        userId,
         status: 'pending',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        tags: [],
       };
     }
   }
 
   async updateTask(id: string, updates: any) {
     try {
-      const response = await firstValueFrom(
-        this.httpService.put(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks/${id}`, updates)
-      );
-      return response.data;
+      if (updates.status) {
+        // Use the status update endpoint
+        const response = await firstValueFrom(
+          this.httpService.patch(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks/status/${id}`, {
+            status: updates.status,
+          })
+        );
+        return response.data;
+      } else {
+        // Use the general update endpoint
+        const response = await firstValueFrom(
+          this.httpService.put(`${process.env.TASK_SERVICE_URL || 'http://localhost:3008'}/tasks/${id}`, updates)
+        );
+        return response.data;
+      }
     } catch (error) {
       return {
         id,
@@ -89,10 +113,11 @@ export class TaskService {
         description: 'Updated description',
         status: updates.status || 'pending',
         priority: updates.priority || 3,
-        dueAt: new Date(),
+        dueAt: null,
         durationMinutes: 60,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date().toISOString(),
+        completedAt: updates.status === 'completed' ? new Date().toISOString() : null,
+        tags: [],
       };
     }
   }

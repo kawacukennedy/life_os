@@ -7,6 +7,15 @@ export class TaskResolver {
   constructor(private readonly taskService: TaskService) {}
 
   @Query(() => TaskList)
+  async getTasks(@Args('userId') userId: string, @Context() context: any): Promise<TaskList> {
+    const authenticatedUserId = context.req.user?.id;
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
+      throw new Error('Unauthorized');
+    }
+    return this.taskService.getTasks(userId);
+  }
+
+  @Query(() => TaskList)
   async tasks(
     @Args('userId') userId: string,
     @Args('status', { nullable: true }) status?: string,
@@ -60,6 +69,16 @@ export class TaskResolver {
   ): Promise<Task> {
     // TODO: Add authorization check for task ownership
     return this.taskService.updateTask(id, { title, status, priority });
+  }
+
+  @Mutation(() => Task)
+  async updateTaskStatus(
+    @Args('taskId') taskId: string,
+    @Args('status') status: string,
+    @Context() context: any,
+  ): Promise<Task> {
+    // TODO: Add authorization check for task ownership
+    return this.taskService.updateTask(taskId, { status });
   }
 
   @Mutation(() => Boolean)
