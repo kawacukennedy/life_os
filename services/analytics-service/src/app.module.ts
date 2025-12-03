@@ -6,6 +6,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EventStoreModule } from './event-store/event-store.module';
 import { ErrorHandlingMiddleware } from './common/error-handling.middleware';
+import { SecurityMiddleware } from './common/security.middleware';
 
 @Module({
   imports: [
@@ -38,6 +39,10 @@ import { ErrorHandlingMiddleware } from './common/error-handling.middleware';
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(ErrorHandlingMiddleware).forRoutes('*');
+    consumer
+      .apply(SecurityMiddleware)
+      .forRoutes('*')
+      .apply(ErrorHandlingMiddleware)
+      .forRoutes('*');
   }
 }
