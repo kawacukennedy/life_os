@@ -29,6 +29,9 @@ export class GatewayService {
       finance: 'http://localhost:3003',
       learning: 'http://localhost:3004',
       notification: 'http://localhost:3005',
+      task: 'http://localhost:3006',
+      user: 'http://localhost:3007',
+      ai: 'http://localhost:3008',
     };
     return services[service as keyof typeof services] || '';
   }
