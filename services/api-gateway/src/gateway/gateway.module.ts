@@ -10,6 +10,7 @@ import { AIResolver } from './resolvers/ai.resolver';
 import { SocialResolver } from './resolvers/social.resolver';
 import { RoutinesResolver } from './resolvers/routines.resolver';
 import { SubscriptionResolver } from './resolvers/subscription.resolver';
+import { PluginResolver } from './resolvers/plugin.resolver';
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import { SubscriptionResolver } from './resolvers/subscription.resolver';
     }),
   ],
   controllers: [GatewayController],
-  providers: [GatewayService, TaskResolver, UserResolver, AIResolver, SocialResolver, RoutinesResolver, SubscriptionResolver],
+  providers: [GatewayService, TaskResolver, UserResolver, AIResolver, SocialResolver, RoutinesResolver, SubscriptionResolver, PluginResolver],
 })
 export class GatewayModule {}

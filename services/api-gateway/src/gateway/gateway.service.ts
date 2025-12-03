@@ -36,6 +36,7 @@ export class GatewayService {
       social: 'http://localhost:3011',
       routines: 'http://localhost:3010',
       subscription: 'http://localhost:3012',
+      plugin: 'http://localhost:3013',
     };
     return services[service as keyof typeof services] || '';
   }
