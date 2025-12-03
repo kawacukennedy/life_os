@@ -34,6 +34,107 @@ export class LearningService {
       .getMany();
   }
 
+  async getLearningProgress(userId: string) {
+    const progressRecords = await this.getUserProgress(userId);
+    const courses = await this.getCourses();
+
+    // Calculate stats
+    const totalCourses = progressRecords.length;
+    const completedCourses = progressRecords.filter(p => p.progressPercent === 100).length;
+    const totalTimeSpent = progressRecords.reduce((sum, p) => sum + (p.timeSpent || 0), 0);
+    const averageProgress = totalCourses > 0
+      ? progressRecords.reduce((sum, p) => sum + p.progressPercent, 0) / totalCourses
+      : 0;
+
+    // Calculate current streak (simplified - would need daily tracking)
+    const currentStreak = Math.min(7, completedCourses); // Mock streak
+
+    // Map courses with progress
+    const coursesWithProgress = courses.map(course => {
+      const progress = progressRecords.find(p => p.courseId === course.id);
+      return {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        progress: progress?.progressPercent || 0,
+        totalModules: course.totalModules || 10,
+        completedModules: progress?.completedLessons || 0,
+        estimatedTime: course.estimatedTime || 60,
+        category: course.category,
+        difficulty: course.difficulty,
+        lastAccessedAt: progress?.updatedAt?.toISOString() || course.createdAt.toISOString(),
+      };
+    });
+
+    // Mock achievements
+    const recentAchievements = [
+      {
+        id: 'first-course',
+        title: 'First Steps',
+        description: 'Completed your first course',
+        earnedAt: new Date().toISOString(),
+        type: 'milestone',
+      },
+    ];
+
+    return {
+      userId,
+      totalCourses,
+      completedCourses,
+      totalTimeSpent,
+      currentStreak,
+      averageProgress,
+      courses: coursesWithProgress,
+      recentAchievements,
+    };
+  }
+
+  async getLearningRecommendations(userId: string) {
+    const progress = await this.getLearningProgress(userId);
+    const recommendations = [];
+
+    // Generate recommendations based on progress
+    if (progress.averageProgress < 50) {
+      recommendations.push({
+        id: 'beginner-fundamentals',
+        title: 'Learning Fundamentals',
+        description: 'Build a strong foundation with core concepts',
+        category: 'Fundamentals',
+        difficulty: 'beginner',
+        estimatedTime: 45,
+        reason: 'Based on your current progress level',
+        priority: 'high',
+      });
+    }
+
+    if (progress.completedCourses === 0) {
+      recommendations.push({
+        id: 'getting-started',
+        title: 'Getting Started Guide',
+        description: 'Learn the basics and get comfortable with the platform',
+        category: 'Onboarding',
+        difficulty: 'beginner',
+        estimatedTime: 30,
+        reason: 'Perfect for new learners',
+        priority: 'high',
+      });
+    }
+
+    // Add some general recommendations
+    recommendations.push({
+      id: 'advanced-techniques',
+      title: 'Advanced Techniques',
+      description: 'Master advanced concepts and best practices',
+      category: 'Advanced',
+      difficulty: 'advanced',
+      estimatedTime: 90,
+      reason: 'Challenge yourself with advanced topics',
+      priority: 'medium',
+    });
+
+    return { recommendations };
+  }
+
   async startCourse(userId: string, courseId: string) {
     const existingProgress = await this.progressRepository.findOne({
       where: { userId, courseId },

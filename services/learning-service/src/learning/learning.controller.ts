@@ -51,4 +51,14 @@ export class LearningController {
   async getLearningStats(@Query('userId') userId: string) {
     return this.learningService.getLearningStats(userId);
   }
+
+  @Get('progress-summary')
+  async getLearningProgress(@Query('userId') userId: string) {
+    return this.learningService.getLearningProgress(userId);
+  }
+
+  @Get('recommendations-summary')
+  async getLearningRecommendations(@Query('userId') userId: string) {
+    return this.learningService.getLearningRecommendations(userId);
+  }
 }
