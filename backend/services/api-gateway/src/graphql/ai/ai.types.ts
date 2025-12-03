@@ -84,6 +84,18 @@ export class PersonalizedRecommendations {
   modelMeta: string;
 }
 
+@ObjectType()
+export class ChatResponse {
+  @Field()
+  message: string;
+
+  @Field()
+  conversationId: string;
+
+  @Field()
+  timestamp: Date;
+}
+
 @InputType()
 export class TaskInput {
   @Field(() => ID)

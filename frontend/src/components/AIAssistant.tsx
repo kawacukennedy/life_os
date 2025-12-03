@@ -1,12 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useMutation } from '@apollo/client'
 import { Button } from './ui/Button'
 import VoiceInput from './VoiceInput'
 import { AuthAPI } from '@/lib/api/auth'
 import { HealthAPI } from '@/lib/api/health'
 import { FinanceAPI } from '@/lib/api/finance'
 import { LearningAPI } from '@/lib/api/learning'
+import gql from 'graphql-tag'
 
 interface Message {
   id: string
@@ -14,12 +16,25 @@ interface Message {
   sender: 'user' | 'ai'
 }
 
+const CHAT_MUTATION = gql`
+  mutation Chat($userId: String!, $message: String!, $conversationId: String) {
+    chat(userId: $userId, message: $message, conversationId: $conversationId) {
+      message
+      conversationId
+      timestamp
+    }
+  }
+`
+
 export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: 'Hello! How can I help you optimize your day?', sender: 'ai' }
   ])
   const [input, setInput] = useState('')
   const [userData, setUserData] = useState<any>(null)
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined)
+
+  const [chatMutation] = useMutation(CHAT_MUTATION)
 
   useEffect(() => {
     loadUserData()
@@ -55,34 +70,37 @@ export default function AIAssistant() {
 
     const userMessage: Message = { id: Date.now().toString(), text: input, sender: 'user' }
     setMessages(prev => [...prev, userMessage])
+    const messageToSend = input
     setInput('')
 
-    // Advanced AI response simulation with real data
-    setTimeout(() => {
-      let response = ''
-      const lowerInput = input.toLowerCase()
+    try {
+      const userId = localStorage.getItem('userId') || 'user123'
+      const result = await chatMutation({
+        variables: {
+          userId,
+          message: messageToSend,
+          conversationId,
+        },
+      })
 
-      if (lowerInput.includes('plan') || lowerInput.includes('schedule')) {
-        response = generatePlanningResponse()
-      } else if (lowerInput.includes('health') || lowerInput.includes('fitness')) {
-        response = generateHealthResponse()
-      } else if (lowerInput.includes('finance') || lowerInput.includes('budget')) {
-        response = generateFinanceResponse()
-      } else if (lowerInput.includes('learn') || lowerInput.includes('course')) {
-        response = generateLearningResponse()
-      } else if (lowerInput.includes('task') || lowerInput.includes('remind')) {
-        response = 'I\'ve created a new task for you and set a reminder. You can view all your tasks in the dashboard. Is there anything else I can help you organize?'
-      } else {
-        response = `I understand you're asking about "${input}". As your AI assistant, I can help with:\n\n• Daily planning and scheduling\n• Health and fitness tracking\n• Financial management\n• Learning recommendations\n• Task and reminder management\n\nWhat would you like to focus on?`
-      }
+      const response = result.data.chat
+      setConversationId(response.conversationId)
 
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response,
+        id: Date.now().toString(),
+        text: response.message,
         sender: 'ai'
       }
       setMessages(prev => [...prev, aiMessage])
-    }, 1500)
+    } catch (error) {
+      console.error('Chat error:', error)
+      const aiMessage: Message = {
+        id: Date.now().toString(),
+        text: 'I apologize, but I cannot respond right now. Please try again later.',
+        sender: 'ai'
+      }
+      setMessages(prev => [...prev, aiMessage])
+    }
 
     const generatePlanningResponse = () => {
       const health = userData?.health

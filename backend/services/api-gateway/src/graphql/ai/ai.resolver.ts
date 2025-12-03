@@ -1,5 +1,5 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
-import { AIRecommendation, ScheduleOptimization, PersonalizedRecommendations } from './ai.types';
+import { AIRecommendation, ScheduleOptimization, PersonalizedRecommendations, ChatResponse } from './ai.types';
 import { AIService } from './ai.service';
 
 @Resolver()
@@ -45,5 +45,19 @@ export class AIResolver {
       throw new Error('Unauthorized');
     }
     return this.aiService.getPersonalizedRecommendations(userId, userData);
+  }
+
+  @Mutation(() => ChatResponse)
+  async chat(
+    @Args('userId') userId: string,
+    @Args('message') message: string,
+    @Args('conversationId', { nullable: true }) conversationId?: string,
+    @Context() context: any,
+  ): Promise<ChatResponse> {
+    const authenticatedUserId = context.req.user?.id;
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
+      throw new Error('Unauthorized');
+    }
+    return this.aiService.chat(userId, message, conversationId);
   }
 }

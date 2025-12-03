@@ -80,4 +80,23 @@ export class AIService {
       };
     }
   }
+
+  async chat(userId: string, message: string, conversationId?: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${process.env.AI_SERVICE_URL || 'http://localhost:3009'}/ai/chat`, {
+          userId,
+          message,
+          conversationId,
+        })
+      );
+      return response.data;
+    } catch (error) {
+      return {
+        message: 'I apologize, but I cannot respond right now. Please try again later.',
+        conversationId: conversationId || `conv-${Date.now()}`,
+        timestamp: new Date(),
+      };
+    }
+  }
 }
