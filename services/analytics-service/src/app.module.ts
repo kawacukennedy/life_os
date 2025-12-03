@@ -7,6 +7,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { EventStoreModule } from './event-store/event-store.module';
 import { ErrorHandlingMiddleware } from './common/error-handling.middleware';
 import { SecurityMiddleware } from './common/security.middleware';
+import { getRateLimitConfig } from './common/rate-limit.config';
 
 @Module({
   imports: [
@@ -25,10 +26,7 @@ import { SecurityMiddleware } from './common/security.middleware';
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
     }),
-    ThrottlerModule.forRoot({
-      ttl: 60,
-      limit: 1000,
-    }),
+    ThrottlerModule.forRoot(getRateLimitConfig()),
     CacheModule.register({
       ttl: 300, // 5 minutes default
       max: 100, // maximum number of items in cache
