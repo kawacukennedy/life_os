@@ -7,10 +7,12 @@ import TasksScreen from '../screens/app/TasksScreen';
 import SocialScreen from '../screens/app/SocialScreen';
 import SettingsScreen from '../screens/app/SettingsScreen';
 import HealthScreen from '../screens/app/HealthScreen';
+import FinanceScreen from '../screens/app/FinanceScreen';
 
 export type AppTabParamList = {
   Dashboard: undefined;
   Health: undefined;
+  Finance: undefined;
   Tasks: undefined;
   Social: undefined;
   Settings: undefined;
@@ -29,6 +31,8 @@ const AppNavigator = () => {
             iconName = 'dashboard';
           } else if (route.name === 'Health') {
             iconName = 'favorite';
+          } else if (route.name === 'Finance') {
+            iconName = 'account-balance';
           } else if (route.name === 'Tasks') {
             iconName = 'check-circle';
           } else if (route.name === 'Social') {
@@ -47,6 +51,7 @@ const AppNavigator = () => {
       })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Health" component={HealthScreen} />
+      <Tab.Screen name="Finance" component={FinanceScreen} />
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Social" component={SocialScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
