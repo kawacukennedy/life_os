@@ -4,6 +4,7 @@ import { Repository, Between } from 'typeorm';
 import { AnalyticsEvent } from './analytics-event.entity';
 import { EventProcessorService } from './event-processor.service';
 import { BigQueryService } from './bigquery.service';
+import { CacheService } from '../common/cache.service';
 
 @Injectable()
 export class AnalyticsService {
@@ -12,6 +13,7 @@ export class AnalyticsService {
     private eventRepository: Repository<AnalyticsEvent>,
     private eventProcessor: EventProcessorService,
     private bigQueryService: BigQueryService,
+    private cacheService: CacheService,
   ) {}
 
   async trackEvent(eventData: any) {
@@ -45,6 +47,14 @@ export class AnalyticsService {
   }
 
   async getUserActivityReport(userId: string, startDate: string, endDate: string) {
+    const cacheKey = this.cacheService.generateKey('user-activity', { userId, startDate, endDate });
+
+    // Check cache first
+    const cached = await this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const events = await this.eventRepository.find({
       where: {
         userId,
@@ -65,15 +75,28 @@ export class AnalyticsService {
       return acc;
     }, {});
 
-    return {
+    const result = {
       userId,
       period: { startDate, endDate },
       activity: aggregated,
       totalEvents: events.length,
     };
+
+    // Cache for 1 hour
+    await this.cacheService.set(cacheKey, result, 3600);
+
+    return result;
   }
 
   async getProductMetricsReport(startDate: string, endDate: string) {
+    const cacheKey = this.cacheService.generateKey('product-metrics', { startDate, endDate });
+
+    // Check cache first
+    const cached = await this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const events = await this.eventRepository.find({
       where: {
         timestamp: Between(new Date(startDate), new Date(endDate)),
@@ -95,10 +118,15 @@ export class AnalyticsService {
       }, {}),
     };
 
-    return {
+    const result = {
       period: { startDate, endDate },
       metrics,
     };
+
+    // Cache for 30 minutes
+    await this.cacheService.set(cacheKey, result, 1800);
+
+    return result;
   }
 
   async getRetentionReport(cohort: string, periods: number) {

@@ -2,6 +2,7 @@ import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EventStoreModule } from './event-store/event-store.module';
 import { ErrorHandlingMiddleware } from './common/error-handling.middleware';
@@ -26,6 +27,10 @@ import { ErrorHandlingMiddleware } from './common/error-handling.middleware';
     ThrottlerModule.forRoot({
       ttl: 60,
       limit: 1000,
+    }),
+    CacheModule.register({
+      ttl: 300, // 5 minutes default
+      max: 100, // maximum number of items in cache
     }),
     AnalyticsModule,
     EventStoreModule,
