@@ -4,6 +4,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { HealthCheckService } from '../common/health-check.service';
+import { PerformanceService } from '../common/performance.service';
 import { TrackEventDto, TrackEventsDto, UserActivityReportDto, ProductMetricsReportDto, RetentionReportDto } from './analytics.dto';
 
 @ApiTags('analytics')
@@ -13,6 +14,7 @@ export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly healthCheckService: HealthCheckService,
+    private readonly performanceService: PerformanceService,
   ) {}
 
   @Post('events')
@@ -55,5 +57,12 @@ export class AnalyticsController {
   @ApiResponse({ status: 200, description: 'Service health information' })
   async getHealth() {
     return this.healthCheckService.getHealthStatus();
+  }
+
+  @Get('metrics')
+  @ApiOperation({ summary: 'Get Prometheus metrics' })
+  @ApiResponse({ status: 200, description: 'Prometheus metrics in text format' })
+  async getMetrics() {
+    return this.performanceService.getMetrics();
   }
 }

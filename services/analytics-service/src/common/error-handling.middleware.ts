@@ -1,9 +1,12 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
+import { PerformanceService } from './performance.service';
 
 @Injectable()
 export class ErrorHandlingMiddleware implements NestMiddleware {
   private readonly logger = new Logger(ErrorHandlingMiddleware.name);
+
+  constructor(private readonly performanceService?: PerformanceService) {}
 
   use(req: Request, res: Response, next: NextFunction) {
     const originalSend = res.send;
@@ -27,16 +30,21 @@ export class ErrorHandlingMiddleware implements NestMiddleware {
     // Handle response
     res.on('finish', () => {
       const statusCode = res.statusCode;
-      const responseTime = Date.now() - (req as any).startTime;
+      const responseTime = (Date.now() - (req as any).startTime) / 1000; // Convert to seconds
+
+      // Record performance metrics
+      if (this.performanceService) {
+        this.performanceService.recordRequest(req.method, req.route?.path || req.url, statusCode, responseTime);
+      }
 
       if (statusCode >= 400) {
         this.logger.error(
-          `[${req.method}] ${req.url} - ${statusCode} - ${responseTime}ms - ${req.ip}`,
+          `[${req.method}] ${req.url} - ${statusCode} - ${responseTime.toFixed(3)}s - ${req.ip}`,
           res._responseData || 'No response data'
         );
       } else {
         this.logger.log(
-          `[${req.method}] ${req.url} - ${statusCode} - ${responseTime}ms`
+          `[${req.method}] ${req.url} - ${statusCode} - ${responseTime.toFixed(3)}s`
         );
       }
     });

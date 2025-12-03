@@ -6,12 +6,13 @@ import { EventProcessorService } from './event-processor.service';
 import { BigQueryService } from './bigquery.service';
 import { HealthCheckService } from '../common/health-check.service';
 import { CacheService } from '../common/cache.service';
+import { PerformanceService } from '../common/performance.service';
 import { AnalyticsEvent } from './analytics-event.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AnalyticsEvent])],
   controllers: [AnalyticsController],
-  providers: [AnalyticsService, EventProcessorService, BigQueryService, HealthCheckService, CacheService],
+  providers: [AnalyticsService, EventProcessorService, BigQueryService, HealthCheckService, CacheService, PerformanceService],
   exports: [AnalyticsService, HealthCheckService],
 })
 export class AnalyticsModule {}
