@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { EventStoreModule } from './event-store/event-store.module';
+import { ErrorHandlingMiddleware } from './common/error-handling.middleware';
 
 @Module({
   imports: [
@@ -30,4 +31,8 @@ import { EventStoreModule } from './event-store/event-store.module';
     EventStoreModule,
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ErrorHandlingMiddleware).forRoutes('*');
+  }
+}
