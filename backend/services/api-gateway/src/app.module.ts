@@ -11,6 +11,7 @@ import { AIModule } from './graphql/ai/ai.module';
 import { HealthModule } from './graphql/health/health.module';
 import { FinanceModule } from './graphql/finance/finance.module';
 import { LearningModule } from './graphql/learning/learning.module';
+import { SocialModule } from './graphql/social/social.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { LearningModule } from './graphql/learning/learning.module';
     HealthModule,
     FinanceModule,
     LearningModule,
+    SocialModule,
   ],
 })
 export class AppModule {}

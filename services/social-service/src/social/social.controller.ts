@@ -37,6 +37,11 @@ export class SocialController {
     return this.socialService.getConnections(userId);
   }
 
+  @Get('connections-summary/:userId')
+  getSocialConnections(@Param('userId') userId: string) {
+    return this.socialService.getSocialConnections(userId);
+  }
+
   @Get('connections/pending/:userId')
   getPendingRequests(@Param('userId') userId: string): Promise<Connection[]> {
     return this.socialService.getPendingRequests(userId);

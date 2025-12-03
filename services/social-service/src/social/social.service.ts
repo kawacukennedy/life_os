@@ -114,12 +114,69 @@ export class SocialService {
     return this.sharedGoalRepository.save(goal);
   }
 
+  async getSocialConnections(userId: string) {
+    // Get accepted connections
+    const connections = await this.connectionRepository.find({
+      where: [
+        { requesterId: userId, status: ConnectionStatus.ACCEPTED },
+        { addresseeId: userId, status: ConnectionStatus.ACCEPTED },
+      ],
+      relations: ['requester', 'addressee'],
+    });
+
+    // Get pending requests
+    const pendingRequests = await this.connectionRepository.find({
+      where: { addresseeId: userId, status: ConnectionStatus.PENDING },
+      relations: ['requester'],
+    });
+
+    // Format connections
+    const formattedConnections = connections.map(conn => {
+      const otherUser = conn.requesterId === userId ? conn.addressee : conn.requester;
+      return {
+        id: conn.id,
+        name: otherUser.name || 'Unknown User',
+        avatar: otherUser.avatar || '',
+        mutualInterests: ['productivity', 'health'], // Mock data - would be calculated
+        connectionStrength: Math.floor(Math.random() * 40) + 60, // Mock strength
+        lastInteraction: conn.updatedAt.toISOString(),
+        sharedGoals: [], // Would be populated from shared goals
+        status: 'connected',
+      };
+    });
+
+    // Format recommendations (mock data for now)
+    const recommendations = [
+      {
+        id: 'rec-1',
+        name: 'Sarah Johnson',
+        avatar: '',
+        reason: 'Shares your interest in productivity and has 3 mutual connections',
+        mutualConnections: 3,
+        sharedInterests: ['productivity', 'learning', 'health'],
+      },
+      {
+        id: 'rec-2',
+        name: 'Mike Chen',
+        avatar: '',
+        reason: 'Both working on similar fitness goals',
+        mutualConnections: 1,
+        sharedInterests: ['fitness', 'running', 'nutrition'],
+      },
+    ];
+
+    return {
+      connections: formattedConnections,
+      recommendations,
+    };
+  }
+
   async getSharedGoals(userId: string): Promise<SharedGoal[]> {
-    return this.sharedGoalRepository
-      .createQueryBuilder('goal')
-      .where('goal.creatorId = :userId OR :userId = ANY(goal.participantIds)', { userId })
-      .orderBy('goal.createdAt', 'DESC')
-      .getMany();
+    return this.sharedGoalRepository.find({
+      where: { creatorId: userId },
+      relations: ['participants'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async getPublicGoals(): Promise<SharedGoal[]> {
