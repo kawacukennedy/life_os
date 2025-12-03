@@ -1,12 +1,13 @@
-import { Controller, Post, Get, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { HealthCheckService } from '../common/health-check.service';
 
 @ApiTags('analytics')
 @Controller('analytics')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ThrottlerGuard)
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
