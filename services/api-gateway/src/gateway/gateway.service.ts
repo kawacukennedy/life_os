@@ -34,6 +34,7 @@ export class GatewayService {
       task: 'http://localhost:3006',
       ai: 'http://localhost:3008',
       social: 'http://localhost:3011',
+      routines: 'http://localhost:3010',
     };
     return services[service as keyof typeof services] || '';
   }

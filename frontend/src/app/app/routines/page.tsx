@@ -1,7 +1,52 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery, useMutation, gql } from '@apollo/client'
 import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { useToast } from '@/contexts/ToastContext'
+
+const GET_ROUTINES = gql`
+  query GetRoutines($userId: String!) {
+    routines(userId: $userId) {
+      id
+      name
+      description
+      triggers
+      actions
+      isActive
+      schedule
+      createdAt
+    }
+  }
+`
+
+const CREATE_ROUTINE = gql`
+  mutation CreateRoutine($input: CreateRoutineInput!) {
+    createRoutine(input: $input) {
+      id
+      name
+      isActive
+      createdAt
+    }
+  }
+`
+
+const UPDATE_ROUTINE = gql`
+  mutation UpdateRoutine($id: ID!, $input: UpdateRoutineInput!) {
+    updateRoutine(id: $id, input: $input) {
+      id
+      isActive
+    }
+  }
+`
+
+const DELETE_ROUTINE = gql`
+  mutation DeleteRoutine($id: ID!) {
+    deleteRoutine(id: $id)
+  }
+`
 
 interface Routine {
   id: string
@@ -14,34 +59,7 @@ interface Routine {
 }
 
 export default function RoutinesPage() {
-  const [routines, setRoutines] = useState<Routine[]>([
-    {
-      id: '1',
-      name: 'Morning Health Check',
-      description: 'Automatically log morning vitals and send reminders',
-      triggers: ['Time: 8:00 AM', 'Day: Monday-Friday'],
-      actions: ['Log heart rate', 'Send reminder to exercise'],
-      isActive: true,
-      lastRun: '2024-11-24T08:00:00Z'
-    },
-    {
-      id: '2',
-      name: 'Weekly Budget Review',
-      description: 'Review spending and send budget alerts',
-      triggers: ['Time: Sunday 6:00 PM'],
-      actions: ['Analyze transactions', 'Send budget report'],
-      isActive: true,
-      lastRun: '2024-11-17T18:00:00Z'
-    },
-    {
-      id: '3',
-      name: 'Learning Streak Reminder',
-      description: 'Remind to maintain daily learning habit',
-      triggers: ['Time: 7:00 PM', 'Condition: No learning today'],
-      actions: ['Send reminder', 'Suggest quick lesson'],
-      isActive: false
-    }
-  ])
+  const [routines, setRoutines] = useState<Routine[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newRoutine, setNewRoutine] = useState({
     name: '',
@@ -49,25 +67,90 @@ export default function RoutinesPage() {
     triggers: [''],
     actions: ['']
   })
+  const { addToast } = useToast()
 
-  const toggleRoutine = (id: string) => {
-    setRoutines(prev => prev.map(routine =>
-      routine.id === id ? { ...routine, isActive: !routine.isActive } : routine
-    ))
+  const userId = localStorage.getItem('userId') || 'user123'
+
+  const { data, loading, refetch } = useQuery(GET_ROUTINES, {
+    variables: { userId },
+    onCompleted: (data) => {
+      if (data?.routines) {
+        setRoutines(data.routines)
+      }
+    }
+  })
+
+  const [createRoutine] = useMutation(CREATE_ROUTINE, {
+    onCompleted: () => {
+      refetch()
+      setShowCreateForm(false)
+      setNewRoutine({ name: '', description: '', triggers: [''], actions: [''] })
+      addToast({
+        title: 'Routine Created',
+        description: 'Your routine has been created successfully.',
+        variant: 'default'
+      })
+    },
+    onError: () => {
+      addToast({
+        title: 'Error',
+        description: 'Failed to create routine.',
+        variant: 'destructive'
+      })
+    }
+  })
+
+  const [updateRoutine] = useMutation(UPDATE_ROUTINE, {
+    onCompleted: () => {
+      refetch()
+      addToast({
+        title: 'Routine Updated',
+        description: 'Your routine has been updated successfully.',
+        variant: 'default'
+      })
+    }
+  })
+
+  const [deleteRoutine] = useMutation(DELETE_ROUTINE, {
+    onCompleted: () => {
+      refetch()
+      addToast({
+        title: 'Routine Deleted',
+        description: 'Your routine has been deleted successfully.',
+        variant: 'default'
+      })
+    }
+  })
+
+  const toggleRoutine = (id: string, currentStatus: boolean) => {
+    updateRoutine({
+      variables: {
+        id,
+        input: { isActive: !currentStatus }
+      }
+    })
   }
 
   const handleCreateRoutine = () => {
-    const routine: Routine = {
-      id: Date.now().toString(),
-      name: newRoutine.name,
-      description: newRoutine.description,
-      triggers: newRoutine.triggers.filter(t => t.trim()),
-      actions: newRoutine.actions.filter(a => a.trim()),
-      isActive: true
+    createRoutine({
+      variables: {
+        input: {
+          userId,
+          name: newRoutine.name,
+          description: newRoutine.description,
+          triggers: newRoutine.triggers.filter(t => t.trim()),
+          actions: newRoutine.actions.filter(a => a.trim()).map(action => ({ type: 'notification', payload: action }))
+        }
+      }
+    })
+  }
+
+  const handleDeleteRoutine = (id: string) => {
+    if (confirm('Are you sure you want to delete this routine?')) {
+      deleteRoutine({
+        variables: { id }
+      })
     }
-    setRoutines(prev => [...prev, routine])
-    setNewRoutine({ name: '', description: '', triggers: [''], actions: [''] })
-    setShowCreateForm(false)
   }
 
   const addTrigger = () => {
@@ -90,6 +173,14 @@ export default function RoutinesPage() {
       ...prev,
       actions: prev.actions.map((a, i) => i === index ? value : a)
     }))
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-start"></div>
+      </div>
+    )
   }
 
   return (
@@ -120,15 +211,25 @@ export default function RoutinesPage() {
                     <h3 className="text-lg font-medium text-gray-900">{routine.name}</h3>
                     <p className="text-sm text-gray-600 mt-1">{routine.description}</p>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={routine.isActive}
-                      onChange={() => toggleRoutine(routine.id)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
-                  </label>
+                  <div className="flex space-x-2">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={routine.isActive}
+                        onChange={() => toggleRoutine(routine.id, routine.isActive)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-start/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-start"></div>
+                    </label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteRoutine(routine.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -146,91 +247,81 @@ export default function RoutinesPage() {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Actions</h4>
                     <div className="space-y-1">
-                      {routine.actions.map((action, index) => (
+                      {Array.isArray(routine.actions) && routine.actions.map((action, index) => (
                         <span key={index} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mr-1">
-                          {action}
+                          {typeof action === 'string' ? action : action.type || 'Action'}
                         </span>
                       ))}
                     </div>
                   </div>
-
-                  {routine.lastRun && (
-                    <div className="text-xs text-gray-500">
-                      Last run: {new Date(routine.lastRun).toLocaleString()}
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
 
           {showCreateForm && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                <div className="mt-3">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Routine</h3>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                      <input
-                        type="text"
-                        value={newRoutine.name}
-                        onChange={(e) => setNewRoutine({ ...newRoutine, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start"
-                        placeholder="Routine name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <textarea
-                        value={newRoutine.description}
-                        onChange={(e) => setNewRoutine({ ...newRoutine, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start"
-                        placeholder="What does this routine do?"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Triggers</label>
-                      {newRoutine.triggers.map((trigger, index) => (
-                        <input
-                          key={index}
-                          type="text"
-                          value={trigger}
-                          onChange={(e) => updateTrigger(index, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start mb-2"
-                          placeholder="e.g., Time: 8:00 AM"
-                        />
-                      ))}
-                      <Button onClick={addTrigger} variant="outline" size="sm">Add Trigger</Button>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Actions</label>
-                      {newRoutine.actions.map((action, index) => (
-                        <input
-                          key={index}
-                          type="text"
-                          value={action}
-                          onChange={(e) => updateAction(index, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start mb-2"
-                          placeholder="e.g., Send notification"
-                        />
-                      ))}
-                      <Button onClick={addAction} variant="outline" size="sm">Add Action</Button>
-                    </div>
+            <Modal onClose={() => setShowCreateForm(false)} title="Create New Routine">
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateRoutine(); }}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <Input
+                      type="text"
+                      value={newRoutine.name}
+                      onChange={(e) => setNewRoutine({ ...newRoutine, name: e.target.value })}
+                      placeholder="Routine name"
+                      required
+                    />
                   </div>
 
-                  <div className="flex justify-end space-x-2 mt-6">
-                    <Button onClick={() => setShowCreateForm(false)} variant="outline">Cancel</Button>
-                    <Button onClick={handleCreateRoutine}>Create Routine</Button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={newRoutine.description}
+                      onChange={(e) => setNewRoutine({ ...newRoutine, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-start"
+                      placeholder="What does this routine do?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Triggers</label>
+                    {newRoutine.triggers.map((trigger, index) => (
+                      <Input
+                        key={index}
+                        type="text"
+                        value={trigger}
+                        onChange={(e) => updateTrigger(index, e.target.value)}
+                        className="mb-2"
+                        placeholder="e.g., Time: 8:00 AM"
+                      />
+                    ))}
+                    <Button onClick={addTrigger} variant="outline" size="sm">Add Trigger</Button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Actions</label>
+                    {newRoutine.actions.map((action, index) => (
+                      <Input
+                        key={index}
+                        type="text"
+                        value={action}
+                        onChange={(e) => updateAction(index, e.target.value)}
+                        className="mb-2"
+                        placeholder="e.g., Send notification"
+                      />
+                    ))}
+                    <Button onClick={addAction} variant="outline" size="sm">Add Action</Button>
                   </div>
                 </div>
-              </div>
-            </div>
+
+                <div className="flex justify-end space-x-2 mt-6">
+                  <Button type="button" onClick={() => setShowCreateForm(false)} variant="outline">Cancel</Button>
+                  <Button type="submit">Create Routine</Button>
+                </div>
+              </form>
+            </Modal>
           )}
         </div>
       </main>

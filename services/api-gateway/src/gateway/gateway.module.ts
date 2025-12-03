@@ -8,6 +8,7 @@ import { TaskResolver } from './resolvers/task.resolver';
 import { UserResolver } from './resolvers/user.resolver';
 import { AIResolver } from './resolvers/ai.resolver';
 import { SocialResolver } from './resolvers/social.resolver';
+import { RoutinesResolver } from './resolvers/routines.resolver';
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import { SocialResolver } from './resolvers/social.resolver';
     }),
   ],
   controllers: [GatewayController],
-  providers: [GatewayService, TaskResolver, UserResolver, AIResolver, SocialResolver],
+  providers: [GatewayService, TaskResolver, UserResolver, AIResolver, SocialResolver, RoutinesResolver],
 })
 export class GatewayModule {}
