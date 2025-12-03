@@ -1,14 +1,17 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
 import { HealthService } from './health.service';
-import { HealthSummary, Vital } from './health.types';
+import { HealthSummary, Vital, HealthInsights } from './health.types';
 
 @Resolver()
 export class HealthResolver {
   constructor(private readonly healthService: HealthService) {}
 
   @Query(() => HealthSummary)
-  async healthSummary(@Context() context: any) {
-    const userId = context.req.user?.id;
+  async getHealthSummary(@Args('userId') userId: string, @Context() context: any) {
+    const authenticatedUserId = context.req.user?.id;
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
+      throw new Error('Unauthorized');
+    }
     return this.healthService.getHealthSummary(userId);
   }
 
@@ -29,5 +32,14 @@ export class HealthResolver {
     @Args('unit') unit: string,
   ) {
     return this.healthService.addVital(userId, metricType, value, unit);
+  }
+
+  @Query(() => HealthInsights)
+  async getHealthInsights(@Args('userId') userId: string, @Context() context: any) {
+    const authenticatedUserId = context.req.user?.id;
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
+      throw new Error('Unauthorized');
+    }
+    return this.healthService.getHealthInsights(userId);
   }
 }

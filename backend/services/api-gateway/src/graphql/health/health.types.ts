@@ -5,17 +5,74 @@ export class HealthSummary {
   @Field()
   userId: string;
 
-  @Field(() => Float, { nullable: true })
-  averageHeartRate?: number;
+  @Field()
+  date: string;
 
-  @Field(() => Float, { nullable: true })
-  averageSteps?: number;
+  @Field(() => Float)
+  steps: number;
 
-  @Field(() => Float, { nullable: true })
-  averageSleepHours?: number;
+  @Field(() => Float)
+  heartRate: number;
+
+  @Field(() => Float)
+  sleepHours: number;
+
+  @Field(() => Float)
+  calories: number;
+
+  @Field(() => Float)
+  activeMinutes: number;
+
+  @Field(() => [Vital])
+  vitals: Vital[];
+
+  @Field(() => [HealthAnomaly])
+  anomalies: HealthAnomaly[];
+}
+
+@ObjectType()
+export class HealthAnomaly {
+  @Field()
+  id: string;
 
   @Field()
-  lastUpdated: Date;
+  vitalType: string;
+
+  @Field()
+  severity: string;
+
+  @Field()
+  message: string;
+
+  @Field()
+  timestamp: string;
+}
+
+@ObjectType()
+export class HealthInsight {
+  @Field()
+  id: string;
+
+  @Field()
+  type: string;
+
+  @Field()
+  title: string;
+
+  @Field()
+  description: string;
+
+  @Field()
+  actionable: boolean;
+
+  @Field()
+  createdAt: Date;
+}
+
+@ObjectType()
+export class HealthInsights {
+  @Field(() => [HealthInsight])
+  insights: HealthInsight[];
 }
 
 @ObjectType()
