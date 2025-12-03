@@ -1,0 +1,139 @@
+name: Analytics Service CI
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'services/analytics-service/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'services/analytics-service/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: lifeos_analytics_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: services/analytics-service/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd services/analytics-service
+        npm ci
+
+    - name: Run linting
+      run: |
+        cd services/analytics-service
+        npm run lint
+
+    - name: Run unit tests
+      run: |
+        cd services/analytics-service
+        npm run test
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USERNAME: postgres
+        DB_PASSWORD: password
+        DB_NAME: lifeos_analytics_test
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
+    - name: Run e2e tests
+      run: |
+        cd services/analytics-service
+        npm run test:e2e
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USERNAME: postgres
+        DB_PASSWORD: password
+        DB_NAME: lifeos_analytics_test
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
+    - name: Build application
+      run: |
+        cd services/analytics-service
+        npm run build
+
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: './services/analytics-service'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy-staging:
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: lifeos/analytics-service
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/analytics-service
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    - name: Deploy to staging
+      run: |
+        aws ecs update-service --cluster lifeos-staging --service analytics-service --force-new-deployment
