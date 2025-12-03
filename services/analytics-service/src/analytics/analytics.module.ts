@@ -4,12 +4,13 @@ import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { EventProcessorService } from './event-processor.service';
 import { BigQueryService } from './bigquery.service';
+import { HealthCheckService } from '../common/health-check.service';
 import { AnalyticsEvent } from './analytics-event.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AnalyticsEvent])],
   controllers: [AnalyticsController],
-  providers: [AnalyticsService, EventProcessorService, BigQueryService],
-  exports: [AnalyticsService],
+  providers: [AnalyticsService, EventProcessorService, BigQueryService, HealthCheckService],
+  exports: [AnalyticsService, HealthCheckService],
 })
 export class AnalyticsModule {}

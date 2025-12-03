@@ -2,12 +2,16 @@ import { Controller, Post, Get, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { HealthCheckService } from '../common/health-check.service';
 
 @ApiTags('analytics')
 @Controller('analytics')
 @UseGuards(JwtAuthGuard)
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly healthCheckService: HealthCheckService,
+  ) {}
 
   @Post('events')
   @ApiOperation({ summary: 'Track analytics event' })
@@ -52,5 +56,12 @@ export class AnalyticsController {
     @Query('periods') periods: number,
   ) {
     return this.analyticsService.getRetentionReport(cohort, periods);
+  }
+
+  @Get('health')
+  @ApiOperation({ summary: 'Get service health status' })
+  @ApiResponse({ status: 200, description: 'Service health information' })
+  async getHealth() {
+    return this.healthCheckService.getHealthStatus();
   }
 }
