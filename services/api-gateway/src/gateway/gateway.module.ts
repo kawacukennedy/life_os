@@ -11,6 +11,7 @@ import { SocialResolver } from './resolvers/social.resolver';
 import { RoutinesResolver } from './resolvers/routines.resolver';
 import { SubscriptionResolver } from './resolvers/subscription.resolver';
 import { PluginResolver } from './resolvers/plugin.resolver';
+import { EmailResolver } from './resolvers/email.resolver';
 
 @Module({
   imports: [
@@ -23,6 +24,6 @@ import { PluginResolver } from './resolvers/plugin.resolver';
     }),
   ],
   controllers: [GatewayController],
-  providers: [GatewayService, TaskResolver, UserResolver, AIResolver, SocialResolver, RoutinesResolver, SubscriptionResolver, PluginResolver],
+  providers: [GatewayService, TaskResolver, UserResolver, AIResolver, SocialResolver, RoutinesResolver, SubscriptionResolver, PluginResolver, EmailResolver],
 })
 export class GatewayModule {}
