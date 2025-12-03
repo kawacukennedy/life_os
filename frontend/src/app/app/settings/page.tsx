@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery, useMutation, gql } from '@apollo/client'
 import { Button } from '@/components/ui/Button'
 import ThemeToggle from '@/components/ThemeToggle'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
@@ -9,11 +10,67 @@ import { AuthAPI } from '@/lib/api/auth'
 import { HealthAPI } from '@/lib/api/health'
 import { FinanceAPI } from '@/lib/api/finance'
 import { NotificationsAPI } from '@/lib/api/notifications'
+import { useToast } from '@/contexts/ToastContext'
+
+const GET_SUBSCRIPTION = gql`
+  query GetSubscription($userId: String!) {
+    subscription(userId: $userId) {
+      id
+      plan
+      status
+      startedAt
+      endsAt
+    }
+  }
+`
+
+const CREATE_SUBSCRIPTION = gql`
+  mutation CreateSubscription($userId: String!, $plan: String!) {
+    createSubscription(userId: $userId, plan: $plan) {
+      id
+      plan
+      status
+    }
+  }
+`
+
+const CANCEL_SUBSCRIPTION = gql`
+  mutation CancelSubscription($userId: String!) {
+    cancelSubscription(userId: $userId)
+  }
+`
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
   const { i18n } = useTranslation()
   const { permission, requestPermission, subscribeToPush, sendNotification } = usePushNotifications()
+  const { addToast } = useToast()
+
+  const userId = localStorage.getItem('userId') || 'user123'
+
+  const { data: subscriptionData, loading: subscriptionLoading } = useQuery(GET_SUBSCRIPTION, {
+    variables: { userId }
+  })
+
+  const [createSubscription] = useMutation(CREATE_SUBSCRIPTION, {
+    onCompleted: () => {
+      addToast({
+        title: 'Subscription Updated',
+        description: 'Your subscription has been updated successfully.',
+        variant: 'default'
+      })
+    }
+  })
+
+  const [cancelSubscription] = useMutation(CANCEL_SUBSCRIPTION, {
+    onCompleted: () => {
+      addToast({
+        title: 'Subscription Cancelled',
+        description: 'Your subscription has been cancelled.',
+        variant: 'default'
+      })
+    }
+  })
 
   useEffect(() => {
     loadIntegrationsStatus()
@@ -132,6 +189,20 @@ export default function SettingsPage() {
     setIntegrations(prev => ({ ...prev, [service]: false }))
   }
 
+  const handleUpgradeSubscription = (plan: string) => {
+    createSubscription({
+      variables: { userId, plan }
+    })
+  }
+
+  const handleCancelSubscription = () => {
+    if (confirm('Are you sure you want to cancel your subscription?')) {
+      cancelSubscription({
+        variables: { userId }
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
@@ -198,9 +269,109 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-             </div>
+              </div>
 
-             {/* Integrations */}
+              {/* Subscription */}
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Subscription</h2>
+                </div>
+                <div className="px-6 py-4">
+                  {subscriptionLoading ? (
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">Current Plan</h3>
+                        <p className="text-sm text-gray-500">
+                          {subscriptionData?.subscription?.plan || 'Free'} Plan
+                        </p>
+                        {subscriptionData?.subscription?.status && (
+                          <p className="text-xs text-gray-400">
+                            Status: {subscriptionData.subscription.status}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="border rounded-lg p-4">
+                          <h4 className="font-medium text-gray-900">Free</h4>
+                          <p className="text-sm text-gray-500">$0/month</p>
+                          <ul className="text-xs text-gray-600 mt-2 space-y-1">
+                            <li>• Basic dashboard</li>
+                            <li>• Limited integrations</li>
+                            <li>• Community support</li>
+                          </ul>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 w-full"
+                            disabled={subscriptionData?.subscription?.plan === 'free'}
+                          >
+                            Current Plan
+                          </Button>
+                        </div>
+
+                        <div className="border rounded-lg p-4 border-primary-start">
+                          <h4 className="font-medium text-gray-900">Pro</h4>
+                          <p className="text-sm text-gray-500">$9.99/month</p>
+                          <ul className="text-xs text-gray-600 mt-2 space-y-1">
+                            <li>• Advanced AI assistant</li>
+                            <li>• All integrations</li>
+                            <li>• Priority support</li>
+                            <li>• Custom routines</li>
+                          </ul>
+                          <Button
+                            size="sm"
+                            className="mt-3 w-full"
+                            onClick={() => handleUpgradeSubscription('pro')}
+                            disabled={subscriptionData?.subscription?.plan === 'pro'}
+                          >
+                            {subscriptionData?.subscription?.plan === 'pro' ? 'Current Plan' : 'Upgrade'}
+                          </Button>
+                        </div>
+
+                        <div className="border rounded-lg p-4">
+                          <h4 className="font-medium text-gray-900">Enterprise</h4>
+                          <p className="text-sm text-gray-500">$29.99/month</p>
+                          <ul className="text-xs text-gray-600 mt-2 space-y-1">
+                            <li>• Everything in Pro</li>
+                            <li>• Team collaboration</li>
+                            <li>• Advanced analytics</li>
+                            <li>• Dedicated support</li>
+                          </ul>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 w-full"
+                            onClick={() => handleUpgradeSubscription('enterprise')}
+                            disabled={subscriptionData?.subscription?.plan === 'enterprise'}
+                          >
+                            {subscriptionData?.subscription?.plan === 'enterprise' ? 'Current Plan' : 'Upgrade'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {subscriptionData?.subscription && subscriptionData.subscription.status === 'active' && (
+                        <div className="border-t pt-4">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleCancelSubscription}
+                          >
+                            Cancel Subscription
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Integrations */}
              <div className="bg-white shadow rounded-lg">
                <div className="px-6 py-4 border-b border-gray-200">
                  <h2 className="text-lg font-medium text-gray-900">Integrations</h2>
