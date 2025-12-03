@@ -38,6 +38,36 @@ export class ProfileController {
     return this.profileService.getProfile(userId);
   }
 
+  @Post(':userId/privacy/export')
+  @UseGuards(JwtAuthGuard)
+  async exportUserData(@Param('userId') userId: string, @Query('format') format?: string) {
+    return this.privacyService.exportUserData(userId);
+  }
+
+  @Post(':userId/privacy/consent')
+  @UseGuards(JwtAuthGuard)
+  async updateConsent(@Param('userId') userId: string, @Body() consents: any) {
+    return this.privacyService.updateDataProcessingConsent(userId, consents);
+  }
+
+  @Get(':userId/privacy/consent')
+  @UseGuards(JwtAuthGuard)
+  async getConsent(@Param('userId') userId: string) {
+    return this.privacyService.getDataProcessingConsent(userId);
+  }
+
+  @Post(':userId/privacy/portability')
+  @UseGuards(JwtAuthGuard)
+  async requestDataPortability(@Param('userId') userId: string, @Query('format') format?: string) {
+    return this.privacyService.requestDataPortability(userId, format as 'json' | 'xml');
+  }
+
+  @Post(':userId/privacy/delete')
+  @UseGuards(JwtAuthGuard)
+  async requestDataDeletion(@Param('userId') userId: string, @Body() body?: { reason?: string }) {
+    return this.privacyService.submitDataDeletionRequest(userId, body?.reason);
+  }
+
    @Post(':userId')
    @UseGuards(JwtAuthGuard)
    async createProfile(@Param('userId') userId: string, @Body() data: CreateProfileDto) {
