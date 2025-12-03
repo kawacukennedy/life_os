@@ -5,6 +5,7 @@ import PWARegister from '@/components/PWARegister'
 import OfflineInitializer from '@/components/OfflineInitializer'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ToastProvider } from '@/contexts/ToastContext'
+import { AuthProvider } from '@/contexts/AuthContext'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import LayoutWrapper from '@/components/LayoutWrapper'
 import ReactQueryProvider from '@/components/ReactQueryProvider'
@@ -35,20 +36,22 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <ErrorBoundary>
-            <ReactQueryProvider>
-              <GraphQLProvider>
-                <ToastProvider>
-                  <PWARegister />
-                  <OfflineInitializer />
-                  <LayoutWrapper>
-                    {children}
-                  </LayoutWrapper>
-                </ToastProvider>
-              </GraphQLProvider>
-            </ReactQueryProvider>
-          </ErrorBoundary>
-        </ThemeProvider>
+           <ErrorBoundary>
+             <AuthProvider>
+               <ReactQueryProvider>
+                 <GraphQLProvider>
+                   <ToastProvider>
+                     <PWARegister />
+                     <OfflineInitializer />
+                     <LayoutWrapper>
+                       {children}
+                     </LayoutWrapper>
+                   </ToastProvider>
+                 </GraphQLProvider>
+               </ReactQueryProvider>
+             </AuthProvider>
+           </ErrorBoundary>
+         </ThemeProvider>
       </body>
     </html>
   )

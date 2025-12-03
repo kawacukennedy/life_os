@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import AuthGuard from '@/components/AuthGuard'
 
 const mockUsers = [
   { id: 1, email: 'user1@example.com', name: 'John Doe', status: 'active', lastLogin: '2023-11-24' },
@@ -28,7 +29,8 @@ export default function AdminConsole() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AuthGuard roles={['admin']}>
+      <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
@@ -231,5 +233,6 @@ export default function AdminConsole() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   )
 }
