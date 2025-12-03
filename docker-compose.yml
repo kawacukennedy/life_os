@@ -27,6 +27,34 @@ services:
       timeout: 3s
       retries: 3
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   milvus-etcd:
     container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.5
@@ -168,25 +196,51 @@ services:
        postgres:
          condition: service_healthy
 
-   notification-service:
-     build:
-       context: ./backend/services/notification-service
-     ports:
-       - "3005:3005"
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-       - SMTP_HOST=smtp.gmail.com
-       - SMTP_PORT=587
-       - SMTP_USER=your-email@gmail.com
-       - SMTP_PASS=your-app-password
-     depends_on:
-       postgres:
-         condition: service_healthy
+    notification-service:
+      build:
+        context: ./backend/services/notification-service
+      ports:
+        - "3005:3005"
+      environment:
+        - DB_HOST=postgres
+        - DB_PORT=5432
+        - DB_USERNAME=postgres
+        - DB_PASSWORD=password
+        - DB_NAME=lifeos
+        - JWT_SECRET=your-secret-key
+        - SMTP_HOST=smtp.gmail.com
+        - SMTP_PORT=587
+        - SMTP_USER=your-email@gmail.com
+        - SMTP_PASS=your-app-password
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    analytics-service:
+      build:
+        context: ./services/analytics-service
+      ports:
+        - "3007:3006"
+      environment:
+        - NODE_ENV=development
+        - DB_HOST=postgres
+        - DB_PORT=5432
+        - DB_USERNAME=postgres
+        - DB_PASSWORD=password
+        - DB_NAME=lifeos_analytics
+        - REDIS_HOST=redis
+        - REDIS_PORT=6379
+        - KAFKA_BROKER=kafka:9092
+        - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+        - GCP_KEY_FILE=${GCP_KEY_FILE}
+        - JWT_SECRET=your-secret-key
+      depends_on:
+        postgres:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+        kafka:
+          condition: service_started
 
 volumes:
   postgres_data:
