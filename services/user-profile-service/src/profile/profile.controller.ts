@@ -147,7 +147,7 @@ export class ProfileController {
     // GDPR Privacy Endpoints
     @Get(':userId/gdpr-export')
     @UseGuards(JwtAuthGuard)
-    async exportUserData(@Param('userId') userId: string) {
+    async gdprExportUserData(@Param('userId') userId: string) {
       return this.privacyService.exportUserData(userId);
     }
 
@@ -163,9 +163,33 @@ export class ProfileController {
       return this.privacyService.anonymizeUserData(userId);
     }
 
-    @Get(':userId/gdpr-retention')
-    @UseGuards(JwtAuthGuard)
-    async getDataRetentionInfo(@Param('userId') userId: string) {
-      return this.privacyService.getDataRetentionInfo(userId);
-    }
- }
+     @Get(':userId/gdpr-retention')
+     @UseGuards(JwtAuthGuard)
+     async getDataRetentionInfo(@Param('userId') userId: string) {
+       return this.privacyService.getDataRetentionInfo(userId);
+     }
+
+     @Get(':userId/privacy-settings')
+     @UseGuards(JwtAuthGuard)
+     async getPrivacySettings(@Param('userId') userId: string) {
+       return this.privacyService.getPrivacySettings(userId);
+     }
+
+     @Put(':userId/privacy-settings')
+     @UseGuards(JwtAuthGuard)
+     async updatePrivacySettings(@Param('userId') userId: string, @Body() settings: any) {
+       return this.privacyService.updatePrivacySettings(userId, settings);
+     }
+
+     @Post(':userId/data-export')
+     @UseGuards(JwtAuthGuard)
+     async requestDataExport(@Param('userId') userId: string) {
+       return this.privacyService.requestDataExport(userId);
+     }
+
+     @Post(':userId/delete-account')
+     @UseGuards(JwtAuthGuard)
+     async deleteAccount(@Param('userId') userId: string, @Body() body: { confirmation: string }) {
+       return this.privacyService.deleteAccount(userId, body.confirmation);
+     }
+  }

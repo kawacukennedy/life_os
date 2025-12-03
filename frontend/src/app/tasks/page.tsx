@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
-import { useLazyQuery } from '@apollo/client'
+import { print } from 'graphql'
+import { useQuery as useApolloQuery, useMutation as useApolloMutation } from '@apollo/client'
+
+export const dynamic = 'force-dynamic'
 
 const GET_TASKS = gql`
   query GetTasks($userId: String!) {
@@ -74,7 +77,7 @@ export default function TasksPage() {
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || 'user123' : 'user123'
 
-  const { data: tasksData, isLoading, error, refetch } = useLazyQuery(GET_TASKS, {
+  const { data: tasksData, loading, error, refetch } = useApolloQuery(GET_TASKS, {
     variables: { userId },
     onCompleted: (data) => {
       trackEvent('tasks_loaded', { count: data?.getTasks?.totalCount })
@@ -89,7 +92,7 @@ export default function TasksPage() {
     }
   })
 
-  const [createTaskMutation] = useMutation(CREATE_TASK, {
+  const [createTaskMutation] = useApolloMutation(CREATE_TASK, {
     onCompleted: () => {
       refetch()
       setNewTaskTitle('')
@@ -109,7 +112,7 @@ export default function TasksPage() {
     }
   })
 
-  const [updateTaskStatusMutation] = useMutation(UPDATE_TASK_STATUS, {
+  const [updateTaskStatusMutation] = useApolloMutation(UPDATE_TASK_STATUS, {
     onCompleted: (data) => {
       refetch()
       if (data.updateTaskStatus.status === 'completed') {
@@ -176,7 +179,7 @@ export default function TasksPage() {
     }
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -207,15 +210,15 @@ export default function TasksPage() {
   }
 
   const tasks = tasksData?.getTasks?.tasks || []
-  const filteredTasks = tasks.filter(task =>
+  const filteredTasks = tasks.filter((task: any) =>
     selectedFilter === 'all' || task.status === selectedFilter
   )
 
   const stats = {
     total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
+    pending: tasks.filter((t: any) => t.status === 'pending').length,
+    inProgress: tasks.filter((t: any) => t.status === 'in_progress').length,
+    completed: tasks.filter((t: any) => t.status === 'completed').length,
   }
 
   return (

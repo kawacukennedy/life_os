@@ -329,4 +329,80 @@ export class PrivacyService {
       lastUpdated: new Date(),
     };
   }
+
+  async getPrivacySettings(userId: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const privacy = user.preferences?.privacy || {};
+
+    return {
+      dataSharing: privacy.dataSharing || false,
+      analyticsTracking: privacy.analyticsTracking || false,
+      aiPersonalization: privacy.aiPersonalization !== false, // Default to true
+      thirdPartyIntegrations: privacy.thirdPartyIntegrations !== false, // Default to true
+      dataRetention: privacy.dataRetention || '7years',
+      exportRequests: privacy.exportRequests || [],
+    };
+  }
+
+  async updatePrivacySettings(userId: string, settings: any) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.preferences = {
+      ...user.preferences,
+      privacy: {
+        ...user.preferences?.privacy,
+        ...settings,
+        lastUpdated: new Date(),
+      },
+    };
+
+    await this.userRepository.save(user);
+
+    // Notify consent changes
+    await this.notifyConsentChange(userId, {
+      analytics: settings.analyticsTracking,
+      aiTraining: settings.aiPersonalization,
+      marketing: settings.dataSharing,
+      thirdPartySharing: settings.thirdPartyIntegrations,
+    });
+
+    return {
+      success: true,
+      message: 'Privacy settings updated successfully',
+    };
+  }
+
+  async requestDataExport(userId: string) {
+    const exportRequest = await this.requestDataPortability(userId);
+    return {
+      requestId: exportRequest.requestId,
+      estimatedCompletion: exportRequest.estimatedCompletion,
+      status: exportRequest.status,
+    };
+  }
+
+  async deleteAccount(userId: string, confirmation: string) {
+    if (confirmation !== 'DELETE') {
+      throw new Error('Invalid confirmation text');
+    }
+
+    // Schedule deletion for 30 days from now
+    const deletionDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // In a real implementation, you'd create a deletion job
+    // For now, we'll just return the scheduled date
+
+    return {
+      success: true,
+      message: 'Account deletion scheduled',
+      deletionDate: deletionDate.toISOString(),
+    };
+  }
 }

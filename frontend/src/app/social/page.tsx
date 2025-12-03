@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -9,7 +10,9 @@ import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
-import { useLazyQuery } from '@apollo/client'
+import { useQuery as useApolloQuery } from '@apollo/client'
+
+export const dynamic = 'force-dynamic'
 
 const GET_SOCIAL_CONNECTIONS = gql`
   query GetSocialConnections($userId: String!) {
@@ -89,7 +92,7 @@ export default function SocialPage() {
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || 'user123' : 'user123'
 
-  const { data: connectionsData, isLoading: connectionsLoading, refetch: refetchConnections } = useLazyQuery(GET_SOCIAL_CONNECTIONS, {
+  const { data: connectionsData, loading: connectionsLoading, refetch: refetchConnections } = useApolloQuery(GET_SOCIAL_CONNECTIONS, {
     variables: { userId },
     onCompleted: (data) => {
       trackEvent('social_connections_loaded', { count: data?.getSocialConnections?.connections?.length })
@@ -104,7 +107,7 @@ export default function SocialPage() {
     }
   })
 
-  const { data: goalsData, isLoading: goalsLoading, refetch: refetchGoals } = useLazyQuery(GET_SHARED_GOALS, {
+  const { data: goalsData, loading: goalsLoading, refetch: refetchGoals } = useApolloQuery(GET_SHARED_GOALS, {
     variables: { userId },
     onCompleted: (data) => {
       trackEvent('shared_goals_loaded', { count: data?.getSharedGoals?.goals?.length })
@@ -191,12 +194,14 @@ export default function SocialPage() {
               ) : connections.length > 0 ? (
                 connections.map((connection: Connection) => (
                   <Card key={connection.id} className="p-6">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <img
-                        src={connection.avatar || '/default-avatar.png'}
-                        alt={connection.name}
-                        className="w-12 h-12 rounded-full"
-                      />
+                     <div className="flex items-center space-x-4 mb-4">
+                       <Image
+                         src={connection.avatar || '/default-avatar.png'}
+                         alt={connection.name}
+                         width={48}
+                         height={48}
+                         className="w-12 h-12 rounded-full"
+                       />
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{connection.name}</h3>
                         <Badge className={getStrengthColor(connection.connectionStrength)}>
@@ -299,12 +304,14 @@ export default function SocialPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recommendations.map((rec: Recommendation) => (
                 <Card key={rec.id} className="p-6">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <img
-                      src={rec.avatar || '/default-avatar.png'}
-                      alt={rec.name}
-                      className="w-12 h-12 rounded-full"
-                    />
+                   <div className="flex items-center space-x-4 mb-4">
+                     <Image
+                       src={rec.avatar || '/default-avatar.png'}
+                       alt={rec.name}
+                       width={48}
+                       height={48}
+                       className="w-12 h-12 rounded-full"
+                     />
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{rec.name}</h3>
                       <p className="text-sm text-gray-600">{rec.mutualConnections} mutual connections</p>

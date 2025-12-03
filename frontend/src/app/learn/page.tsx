@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
-import { useLazyQuery } from '@apollo/client'
+import { print } from 'graphql'
+import { useQuery as useApolloQuery } from '@apollo/client'
+
+export const dynamic = 'force-dynamic'
 
 const GET_LEARNING_DATA = gql`
   query GetLearningData($userId: String!) {
@@ -99,7 +102,7 @@ export default function LearnPage() {
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || 'user123' : 'user123'
 
-  const { data: learningData, isLoading, error, refetch } = useLazyQuery(GET_LEARNING_DATA, {
+  const { data: learningData, loading, error, refetch } = useApolloQuery(GET_LEARNING_DATA, {
     variables: { userId },
     onCompleted: (data) => {
       trackEvent('learning_data_loaded', { courses: data?.getLearningProgress?.totalCourses })
@@ -114,7 +117,7 @@ export default function LearnPage() {
     }
   })
 
-  const { data: recommendationsData } = useLazyQuery(GET_LEARNING_RECOMMENDATIONS, {
+  const { data: recommendationsData } = useApolloQuery(GET_LEARNING_RECOMMENDATIONS, {
     variables: { userId },
   })
 
@@ -154,7 +157,7 @@ export default function LearnPage() {
     return 'bg-gray-400'
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -187,11 +190,11 @@ export default function LearnPage() {
   const data = learningData?.getLearningProgress
   const recommendations = recommendationsData?.getLearningRecommendations?.recommendations || []
 
-  const filteredCourses = data?.courses?.filter(course =>
+  const filteredCourses = data?.courses?.filter((course: any) =>
     selectedCategory === 'all' || course.category === selectedCategory
   ) || []
 
-  const categories = ['all', ...new Set(data?.courses?.map(c => c.category) || [])]
+  const categories: string[] = ['all', ...Array.from(new Set(data?.courses?.map((c: any) => c.category) || [])) as string[]]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -248,7 +251,7 @@ export default function LearnPage() {
           {/* Category Filter */}
           <div className="mb-6">
             <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
+              {categories.map((category: string) => (
                 <Button
                   key={category}
                   variant={selectedCategory === category ? 'default' : 'outline'}

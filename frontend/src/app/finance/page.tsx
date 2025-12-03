@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
-import { useLazyQuery } from '@apollo/client'
+import { print } from 'graphql'
+import { useQuery as useApolloQuery } from '@apollo/client'
+
+export const dynamic = 'force-dynamic'
 
 const GET_FINANCE_DATA = gql`
   query GetFinanceData($userId: String!) {
@@ -99,7 +102,7 @@ export default function FinancePage() {
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || 'user123' : 'user123'
 
-  const { data: financeData, isLoading, error, refetch } = useLazyQuery(GET_FINANCE_DATA, {
+  const { data: financeData, loading, error, refetch } = useApolloQuery(GET_FINANCE_DATA, {
     variables: { userId },
     onCompleted: (data) => {
       trackEvent('finance_data_loaded', { period: selectedPeriod })
@@ -114,7 +117,7 @@ export default function FinancePage() {
     }
   })
 
-  const { data: insightsData } = useLazyQuery(GET_FINANCE_INSIGHTS, {
+  const { data: insightsData } = useApolloQuery(GET_FINANCE_INSIGHTS, {
     variables: { userId },
   })
 
@@ -136,7 +139,7 @@ export default function FinancePage() {
     return 'bg-green-100 text-green-800'
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -290,7 +293,7 @@ export default function FinancePage() {
             <Card className="p-6 mb-8">
               <h2 className="text-xl font-semibold mb-4">Top Spending Categories</h2>
               <div className="space-y-4">
-                {data.topCategories.map((category, index) => (
+                {data.topCategories.map((category: any, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex justify-between text-sm mb-1">

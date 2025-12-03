@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
-import { useLazyQuery } from '@apollo/client'
+import { print } from 'graphql'
+import { useQuery as useApolloQuery } from '@apollo/client'
+
+export const dynamic = 'force-dynamic'
 
 const GET_HEALTH_DATA = gql`
   query GetHealthData($userId: String!) {
@@ -89,7 +92,7 @@ export default function HealthPage() {
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || 'user123' : 'user123'
 
-  const { data: healthData, isLoading, error, refetch } = useLazyQuery(GET_HEALTH_DATA, {
+  const { data: healthData, loading, error, refetch } = useApolloQuery(GET_HEALTH_DATA, {
     variables: { userId },
     onCompleted: (data) => {
       trackEvent('health_data_loaded', { period: selectedPeriod })
@@ -104,7 +107,7 @@ export default function HealthPage() {
     }
   })
 
-  const { data: insightsData } = useLazyQuery(GET_HEALTH_INSIGHTS, {
+  const { data: insightsData } = useApolloQuery(GET_HEALTH_INSIGHTS, {
     variables: { userId },
   })
 
@@ -139,7 +142,7 @@ export default function HealthPage() {
     }
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">

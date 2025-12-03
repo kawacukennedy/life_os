@@ -10,6 +10,7 @@ LifeOS is a unified, AI-driven personal operating system that centralizes health
 - **Secure Integrations**: Calendar (Google/Apple), wearables (Fitbit/Apple Watch), banks (Plaid), messaging
 - **Continuous Learning Engine**: Personalized micro-courses and skill recommendations
 - **Privacy Controls**: Export, delete, selective sharing, on-device model options
+- **Plugin Marketplace**: Extensible plugin/API marketplace for third-party integrations
 - **Developer Platform**: REST/GraphQL APIs, webhooks, SDKs
 
 ## Architecture
@@ -17,16 +18,24 @@ LifeOS is a unified, AI-driven personal operating system that centralizes health
 This is a microservices architecture with:
 
 - **Frontend**: Next.js 13+ with React 18, TypeScript, Tailwind CSS
+- **Mobile App**: React Native with shared components
 - **Backend Services**:
-  - API Gateway (Port 3001)
-  - Auth Service (Port 3001, proxied)
-  - Health Service (Port 3002)
-  - Finance Service (Port 3003)
-  - Learning Service (Port 3004)
-  - Notification Service (Port 3005)
-- **Database**: PostgreSQL with TypeORM
-- **Cache**: Redis
-- **Deployment**: Docker + Docker Compose
+  - API Gateway (GraphQL) - Port 3001
+  - Auth Service - Port 3000
+  - User Profile Service - Port 3002
+  - Health Service - Port 3003
+  - Finance Service - Port 3004
+  - Learning Service - Port 3005
+  - Notification Service - Port 3005
+  - AI Inference Service - Port 3006
+  - Analytics Service - Port 3007
+  - Task Service - Port 3008
+  - Plugin Service - Port 3009
+  - Social Service - Port 3010
+  - Subscription Service - Port 3011
+- **Database**: PostgreSQL with TypeORM, Redis for caching, Kafka for events
+- **AI/ML**: Milvus vector database, LLM inference services
+- **Deployment**: Docker + Docker Compose, Kubernetes ready
 
 ## Getting Started
 
@@ -34,101 +43,213 @@ This is a microservices architecture with:
 
 - Node.js 20+
 - Docker & Docker Compose
-- PostgreSQL (or use Docker)
+- PostgreSQL, Redis, Kafka (or use Docker)
 
-### Installation
+### Quick Start with Docker
 
 1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd lifeos
-   ```
+    ```bash
+    git clone <repository-url>
+    cd lifeos
+    ```
 
-2. Start the infrastructure:
-   ```bash
-   docker-compose up -d postgres redis
-   ```
+2. Start all services:
+    ```bash
+    docker-compose up --build
+    ```
 
-3. Install frontend dependencies:
-   ```bash
-   cd frontend
-   npm install
-   ```
+3. Open the application:
+    - Frontend: [http://localhost:3000](http://localhost:3000)
+    - GraphQL Playground: [http://localhost:3001/graphql](http://localhost:3001/graphql)
 
-4. Install backend dependencies:
-   ```bash
-   cd ../backend/services/auth-service && npm install
-   cd ../health-service && npm install
-   cd ../finance-service && npm install
-   cd ../learning-service && npm install
-   cd ../notification-service && npm install
-   cd ../api-gateway && npm install
-   ```
+### Manual Development Setup
 
-5. Start the services:
-   ```bash
-   # Terminal 1: API Gateway
-   cd backend/services/api-gateway && npm run start:dev
+1. Start infrastructure services:
+    ```bash
+    docker-compose up -d postgres redis kafka zookeeper milvus-standalone milvus-etcd milvus-minio
+    ```
 
-   # Terminal 2: Auth Service
-   cd backend/services/auth-service && npm run start:dev
+2. Install dependencies for all services:
+    ```bash
+    # Frontend
+    cd frontend && npm install
 
-   # Terminal 3: Health Service
-   cd backend/services/health-service && npm run start:dev
+    # API Gateway
+    cd ../backend/services/api-gateway && npm install
 
-   # Terminal 4: Finance Service
-   cd backend/services/finance-service && npm run start:dev
+    # All microservices
+    for service in auth-service user-profile-service health-service finance-service learning-service notification-service ai-inference-service analytics-service plugin-service social-service subscription-service; do
+      cd ../services/$service && npm install
+    done
+    ```
 
-   # Terminal 5: Learning Service
-   cd backend/services/learning-service && npm run start:dev
+3. Start services in separate terminals:
+    ```bash
+    # API Gateway
+    cd backend/services/api-gateway && npm run start:dev
 
-   # Terminal 6: Notification Service
-   cd backend/services/notification-service && npm run start:dev
+    # Auth Service
+    cd services/auth-service && npm run start:dev
 
-   # Terminal 7: Frontend
-   cd frontend && npm run dev
-   ```
+    # Other services...
+    # (See docker-compose.yml for port mappings)
+    ```
 
-6. Open [http://localhost:3000](http://localhost:3000)
-
-### Using Docker
-
-```bash
-docker-compose up --build
-```
+4. Start frontend:
+    ```bash
+    cd frontend && npm run dev
+    ```
 
 ## API Documentation
 
-### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login user
-- `GET /auth/dashboard` - Get user dashboard
+LifeOS uses GraphQL as the primary API with REST endpoints for specific services. Access the GraphQL playground at `http://localhost:3001/graphql`.
 
-### Health
-- `GET /health/summary` - Get health summary
-- `GET /health/vitals` - Get health vitals
-- `POST /health/vitals` - Add health vital
+### Core GraphQL Operations
 
-### Finance
-- `GET /finance/summary` - Get finance summary
-- `GET /finance/transactions` - Get transactions
-- `POST /finance/transactions` - Add transaction
+#### Authentication & User Management
+```graphql
+query GetUser($userId: String!) {
+  getUser(userId: $userId) {
+    id
+    email
+    fullName
+    preferences
+  }
+}
 
-### Learning
-- `GET /learning/courses` - Get available courses
-- `GET /learning/progress` - Get user progress
-- `POST /learning/courses/:id/start` - Start a course
-- `PATCH /learning/progress` - Update progress
-- `GET /learning/recommendations` - Get course recommendations
-- `GET /learning/stats` - Get learning statistics
+mutation UpdateProfile($userId: String!, $data: UpdateProfileInput!) {
+  updateProfile(userId: $userId, data: $data) {
+    id
+    fullName
+    preferences
+  }
+}
+```
 
-### Notifications
-- `POST /notifications` - Create notification
-- `GET /notifications` - Get user notifications
-- `GET /notifications/unread-count` - Get unread count
-- `PATCH /notifications/:id/read` - Mark as read
-- `PATCH /notifications/mark-all-read` - Mark all as read
-- `DELETE /notifications/:id` - Delete notification
+#### Tasks & Productivity
+```graphql
+query GetUserTasks($userId: String!) {
+  getUserTasks(userId: $userId) {
+    id
+    title
+    status
+    priority
+    dueDate
+  }
+}
+
+mutation CreateTask($userId: String!, $task: CreateTaskInput!) {
+  createTask(userId: $userId, task: $task) {
+    id
+    title
+    status
+  }
+}
+```
+
+#### Health & Fitness
+```graphql
+query GetHealthDashboard($userId: String!) {
+  getHealthDashboard(userId: $userId) {
+    todayStats {
+      steps
+      calories
+      activeMinutes
+    }
+    weeklyTrends {
+      date
+      steps
+      sleepHours
+    }
+  }
+}
+```
+
+#### Finance
+```graphql
+query GetFinanceOverview($userId: String!) {
+  getFinanceOverview(userId: $userId) {
+    totalBalance
+    monthlySpending
+    budgetStatus
+    recentTransactions {
+      id
+      amount
+      description
+      category
+    }
+  }
+}
+```
+
+#### Learning
+```graphql
+query GetLearningProgress($userId: String!) {
+  getLearningProgress(userId: $userId) {
+    totalCourses
+    completedCourses
+    currentStreak
+    courses {
+      id
+      title
+      progress
+      category
+    }
+  }
+}
+```
+
+#### AI Assistant
+```graphql
+mutation SendMessage($userId: String!, $message: String!) {
+  sendMessage(userId: $userId, message: $message) {
+    id
+    content
+    role
+    timestamp
+  }
+}
+```
+
+#### Plugin Marketplace
+```graphql
+query GetPlugins($category: PluginCategory, $limit: Int) {
+  getPlugins(category: $category, limit: $limit) {
+    id
+    name
+    description
+    category
+    installCount
+    averageRating
+  }
+}
+
+mutation InstallPlugin($userId: String!, $pluginId: String!) {
+  installPlugin(userId: $userId, pluginId: $pluginId) {
+    success
+    message
+  }
+}
+```
+
+#### Privacy & Settings
+```graphql
+query GetPrivacySettings($userId: String!) {
+  getPrivacySettings(userId: $userId) {
+    dataSharing
+    analyticsTracking
+    aiPersonalization
+    dataRetention
+  }
+}
+
+mutation UpdatePrivacySettings($userId: String!, $settings: PrivacySettingsInput!) {
+  updatePrivacySettings(userId: $userId, settings: $settings) {
+    success
+    message
+  }
+}
+```
 
 ## Development
 

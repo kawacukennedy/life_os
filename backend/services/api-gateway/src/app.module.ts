@@ -12,6 +12,10 @@ import { HealthModule } from './graphql/health/health.module';
 import { FinanceModule } from './graphql/finance/finance.module';
 import { LearningModule } from './graphql/learning/learning.module';
 import { SocialModule } from './graphql/social/social.module';
+import { PrivacyModule } from './graphql/privacy/privacy.module';
+import { PluginModule } from './graphql/plugin/plugin.module';
+import { NotificationModule } from './graphql/notification/notification.module';
+import { SubscriptionModule } from './graphql/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -37,6 +41,10 @@ import { SocialModule } from './graphql/social/social.module';
     FinanceModule,
     LearningModule,
     SocialModule,
+    PrivacyModule,
+    PluginModule,
+    NotificationModule,
+    SubscriptionModule,
   ],
 })
 export class AppModule {}
