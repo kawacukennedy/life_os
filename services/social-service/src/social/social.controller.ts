@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { SocialService } from './social.service';
 import { TwitterService } from './twitter.service';
+import { LinkedInService } from './linkedin.service';
 import { Connection } from './connection.entity';
 import { SharedGoal } from './shared-goal.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,6 +22,7 @@ export class SocialController {
   constructor(
     private readonly socialService: SocialService,
     private readonly twitterService: TwitterService,
+    private readonly linkedinService: LinkedInService,
   ) {}
 
   // Connection endpoints
@@ -140,5 +142,54 @@ export class SocialController {
   @Delete('twitter/disconnect/:userId')
   disconnectTwitter(@Param('userId') userId: string): Promise<void> {
     return this.twitterService.disconnect(userId);
+  }
+
+  // LinkedIn integration endpoints
+  @Get('linkedin/auth-url/:userId')
+  getLinkedInAuthUrl(@Param('userId') userId: string): Promise<string> {
+    return this.linkedinService.getAuthUrl(userId);
+  }
+
+  @Post('linkedin/callback')
+  handleLinkedInCallback(@Body() body: { code: string; state: string }): Promise<void> {
+    return this.linkedinService.handleCallback(body.code, body.state);
+  }
+
+  @Get('linkedin/profile/:userId')
+  getLinkedInProfile(@Param('userId') userId: string): Promise<any> {
+    return this.linkedinService.getUserProfile(userId);
+  }
+
+  @Get('linkedin/connections/:userId')
+  getLinkedInConnections(@Param('userId') userId: string): Promise<any[]> {
+    return this.linkedinService.getUserConnections(userId);
+  }
+
+  @Post('linkedin/share/:userId')
+  shareOnLinkedIn(
+    @Param('userId') userId: string,
+    @Body() body: { content: string; visibility?: string }
+  ): Promise<any> {
+    return this.linkedinService.shareContent(userId, body.content, body.visibility);
+  }
+
+  @Get('linkedin/search/people')
+  searchLinkedInPeople(@Query('query') query: string): Promise<any[]> {
+    return this.linkedinService.searchPeople(query);
+  }
+
+  @Get('linkedin/company/:companyId/updates')
+  getCompanyUpdates(@Param('companyId') companyId: string): Promise<any[]> {
+    return this.linkedinService.getCompanyUpdates(companyId);
+  }
+
+  @Post('linkedin/enrich-profile/:userId')
+  enrichUserProfile(@Param('userId') userId: string): Promise<any> {
+    return this.linkedinService.enrichUserProfile(userId);
+  }
+
+  @Delete('linkedin/disconnect/:userId')
+  disconnectLinkedIn(@Param('userId') userId: string): Promise<void> {
+    return this.linkedinService.disconnect(userId);
   }
 }

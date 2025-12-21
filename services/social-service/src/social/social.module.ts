@@ -4,13 +4,14 @@ import { HttpModule } from '@nestjs/axios';
 import { SocialService } from './social.service';
 import { SocialController } from './social.controller';
 import { TwitterService } from './twitter.service';
+import { LinkedInService } from './linkedin.service';
 import { Connection } from './connection.entity';
 import { SharedGoal } from './shared-goal.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Connection, SharedGoal]), HttpModule],
-  providers: [SocialService, TwitterService],
+  providers: [SocialService, TwitterService, LinkedInService],
   controllers: [SocialController],
-  exports: [SocialService, TwitterService],
+  exports: [SocialService, TwitterService, LinkedInService],
 })
 export class SocialModule {}
