@@ -9,9 +9,11 @@ import SettingsScreen from '../screens/app/SettingsScreen';
 import HealthScreen from '../screens/app/HealthScreen';
 import FinanceScreen from '../screens/app/FinanceScreen';
 import LearnScreen from '../screens/app/LearnScreen';
+import AIScreen from '../screens/app/AIScreen';
 
 export type AppTabParamList = {
   Dashboard: undefined;
+  AI: undefined;
   Health: undefined;
   Finance: undefined;
   Learn: undefined;
@@ -31,6 +33,8 @@ const AppNavigator = () => {
 
           if (route.name === 'Dashboard') {
             iconName = 'dashboard';
+          } else if (route.name === 'AI') {
+            iconName = 'smart-toy';
           } else if (route.name === 'Health') {
             iconName = 'favorite';
           } else if (route.name === 'Finance') {
@@ -54,6 +58,7 @@ const AppNavigator = () => {
         headerShown: false,
       })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="AI" component={AIScreen} />
       <Tab.Screen name="Health" component={HealthScreen} />
       <Tab.Screen name="Finance" component={FinanceScreen} />
       <Tab.Screen name="Learn" component={LearnScreen} />
