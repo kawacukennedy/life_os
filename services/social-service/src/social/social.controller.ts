@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SocialService } from './social.service';
+import { TwitterService } from './twitter.service';
 import { Connection } from './connection.entity';
 import { SharedGoal } from './shared-goal.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -17,7 +18,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('social')
 @UseGuards(JwtAuthGuard)
 export class SocialController {
-  constructor(private readonly socialService: SocialService) {}
+  constructor(
+    private readonly socialService: SocialService,
+    private readonly twitterService: TwitterService,
+  ) {}
 
   // Connection endpoints
   @Post('connections/request')
@@ -100,5 +104,41 @@ export class SocialController {
   @Get('recommendations/similar-users/:userId')
   getSimilarUsers(@Param('userId') userId: string, @Query('profile') profile: any): Promise<any[]> {
     return this.socialService.getSimilarUsers(userId, profile);
+  }
+
+  // Twitter integration endpoints
+  @Get('twitter/auth-url/:userId')
+  getTwitterAuthUrl(@Param('userId') userId: string): Promise<string> {
+    return this.twitterService.getAuthUrl(userId);
+  }
+
+  @Post('twitter/callback')
+  handleTwitterCallback(@Body() body: { code: string; state: string }): Promise<void> {
+    return this.twitterService.handleCallback(body.code, body.state);
+  }
+
+  @Get('twitter/tweets/:userId')
+  getUserTweets(@Param('userId') userId: string, @Query('maxResults') maxResults?: number): Promise<any[]> {
+    return this.twitterService.getUserTweets(userId, maxResults);
+  }
+
+  @Get('twitter/profile/:userId')
+  getTwitterProfile(@Param('userId') userId: string): Promise<any> {
+    return this.twitterService.getUserProfile(userId);
+  }
+
+  @Get('twitter/search')
+  searchTweets(@Query('query') query: string): Promise<any[]> {
+    return this.twitterService.searchTweets(query);
+  }
+
+  @Get('twitter/trending')
+  getTrendingTopics(): Promise<any[]> {
+    return this.twitterService.getTrendingTopics();
+  }
+
+  @Delete('twitter/disconnect/:userId')
+  disconnectTwitter(@Param('userId') userId: string): Promise<void> {
+    return this.twitterService.disconnect(userId);
   }
 }
