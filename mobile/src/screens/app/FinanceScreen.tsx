@@ -1,28 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { useFinanceData, useTransactions, useBudgets } from '../../hooks/useFinance';
+import { AppTabParamList } from '../../navigation/AppNavigator';
 
-interface Transaction {
-  id: string;
-  amount: number;
-  description: string;
-  category: string;
-  date: string;
-  type: 'income' | 'expense';
-}
+type Props = BottomTabScreenProps<AppTabParamList, 'Finance'>;
 
-const FinanceScreen = () => {
+const FinanceScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
 
-  const { data: financeData, isLoading } = useQuery({
-    queryKey: ['finance', selectedPeriod],
-    queryFn: async () => {
-      const response = await fetch(`/api/finance/summary?period=${selectedPeriod}`);
-      return response.json();
-    },
-  });
+  const { data: financeData, isLoading } = useFinanceData(selectedPeriod);
+  const { transactions } = useTransactions();
+  const { budgets } = useBudgets();
 
   const periods = [
     { key: 'week', label: 'This Week' },
@@ -30,7 +21,7 @@ const FinanceScreen = () => {
     { key: 'quarter', label: 'Quarter' },
   ];
 
-  const renderTransaction = ({ item }: { item: Transaction }) => (
+  const renderTransaction = ({ item }: { item: any }) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionLeft}>
         <Text style={styles.transactionDescription}>{item.description}</Text>
@@ -114,50 +105,50 @@ const FinanceScreen = () => {
           {/* Recent Transactions */}
           <Card style={styles.transactionsCard}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <FlatList
-              data={financeData?.recentTransactions || []}
-              renderItem={renderTransaction}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              style={styles.transactionsList}
-            />
+             <FlatList
+               data={transactions}
+               renderItem={renderTransaction}
+               keyExtractor={(item) => item.id}
+               showsVerticalScrollIndicator={false}
+               style={styles.transactionsList}
+             />
           </Card>
 
-          {/* Budget Overview */}
-          <Card style={styles.budgetCard}>
-            <Text style={styles.sectionTitle}>Budget Overview</Text>
-            {financeData?.budgets?.map((budget: any) => (
-              <View key={budget.category} style={styles.budgetItem}>
-                <Text style={styles.budgetCategory}>{budget.category}</Text>
-                <View style={styles.budgetProgress}>
-                  <View
-                    style={[
-                      styles.budgetProgressBar,
-                      { width: `${Math.min((budget.spent / budget.limit) * 100, 100)}%` },
-                      budget.spent > budget.limit && styles.budgetOverLimit,
-                    ]}
-                  />
-                </View>
-                <Text style={styles.budgetAmount}>
-                  ${budget.spent} / ${budget.limit}
-                </Text>
-              </View>
-            ))}
-          </Card>
+           {/* Budget Overview */}
+           <Card style={styles.budgetCard}>
+             <Text style={styles.sectionTitle}>Budget Overview</Text>
+             {budgets.map((budget) => (
+               <View key={budget.category} style={styles.budgetItem}>
+                 <Text style={styles.budgetCategory}>{budget.category}</Text>
+                 <View style={styles.budgetProgress}>
+                   <View
+                     style={[
+                       styles.budgetProgressBar,
+                       { width: `${Math.min((budget.spent / budget.limit) * 100, 100)}%` },
+                       budget.spent > budget.limit && styles.budgetOverLimit,
+                     ]}
+                   />
+                 </View>
+                 <Text style={styles.budgetAmount}>
+                   ${budget.spent} / ${budget.limit}
+                 </Text>
+               </View>
+             ))}
+           </Card>
 
           {/* Quick Actions */}
-          <View style={styles.actions}>
-            <Button
-              title="Add Transaction"
-              onPress={() => {/* Navigate to add transaction */}}
-              style={styles.actionButton}
-            />
-            <Button
-              title="Connect Bank"
-              onPress={() => {/* Navigate to Plaid integration */}}
-              style={styles.actionButton}
-            />
-          </View>
+           <View style={styles.actions}>
+             <Button
+               title="Add Transaction"
+               onPress={() => Alert.alert('Coming Soon', 'Transaction management will be available soon!')}
+               style={styles.actionButton}
+             />
+             <Button
+               title="Connect Bank"
+               onPress={() => Alert.alert('Coming Soon', 'Bank integration with Plaid will be available soon!')}
+               style={styles.actionButton}
+             />
+           </View>
         </View>
       )}
     </ScrollView>
