@@ -42,6 +42,12 @@ const GET_HEALTH_DATA = gql`
   }
 `
 
+const GET_FITBIT_AUTH_URL = gql`
+  query GetFitbitAuthUrl($userId: String!) {
+    getFitbitAuthUrl(userId: $userId)
+  }
+`
+
 const GET_HEALTH_INSIGHTS = gql`
   query GetHealthInsights($userId: String!) {
     getHealthInsights(userId: $userId) {
@@ -115,13 +121,21 @@ export default function HealthPage() {
     refetch()
   }, [selectedPeriod])
 
+  const { data: fitbitAuthData } = useApolloQuery(GET_FITBIT_AUTH_URL, {
+    variables: { userId },
+  })
+
   const handleConnectFitbit = () => {
-    // Implement Fitbit OAuth flow
     trackEvent('fitbit_connect_attempted')
-    addToast({
-      title: 'Connecting to Fitbit',
-      description: 'Redirecting to Fitbit authorization...',
-    })
+    if (fitbitAuthData?.getFitbitAuthUrl) {
+      window.location.href = fitbitAuthData.getFitbitAuthUrl
+    } else {
+      addToast({
+        title: 'Error',
+        description: 'Unable to get Fitbit authorization URL',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleConnectAppleHealth = () => {
