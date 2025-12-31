@@ -1,46 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { useHealthData, useSyncHealthData, useHealthMetrics } from '../../hooks/useHealth';
+import { AppTabParamList } from '../../navigation/AppNavigator';
 import AppleHealthKit, { HealthKitPermissions } from 'react-native-health';
 
-interface HealthMetric {
-  id: string;
-  type: string;
-  value: number;
-  unit: string;
-  date: string;
-}
+type Props = BottomTabScreenProps<AppTabParamList, 'Health'>;
 
-const HealthScreen = () => {
+const HealthScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [isHealthKitAvailable, setIsHealthKitAvailable] = useState(false);
 
-  const { data: healthData, isLoading } = useQuery({
-    queryKey: ['health', selectedPeriod],
-    queryFn: async () => {
-      const response = await fetch(`/api/health/summary?period=${selectedPeriod}`);
-      return response.json();
-    },
-  });
-
-  const syncAppleHealthMutation = useMutation({
-    mutationFn: async (healthData: any[]) => {
-      const response = await fetch('/api/health/apple-health/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'user123', healthData }),
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      Alert.alert('Success', 'Health data synced successfully!');
-    },
-    onError: () => {
-      Alert.alert('Error', 'Failed to sync health data');
-    },
-  });
+  const { data: healthData, isLoading } = useHealthData(selectedPeriod);
+  const { metrics } = useHealthMetrics();
+  const syncHealthMutation = useSyncHealthData();
 
   useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -84,6 +59,8 @@ const HealthScreen = () => {
         endDate: new Date().toISOString(),
       };
 
+      const collectedData: any[] = [];
+
       // Get steps
       AppleHealthKit.getStepCount(options, (err: any, results: any) => {
         if (!err && results) {
@@ -96,7 +73,7 @@ const HealthScreen = () => {
             endDate: new Date(result.endDate),
             source: 'apple_health',
           }));
-          syncAppleHealthMutation.mutate(healthData);
+          collectedData.push(...healthData);
         }
       });
 
@@ -112,7 +89,7 @@ const HealthScreen = () => {
             endDate: new Date(result.endDate),
             source: 'apple_health',
           }));
-          syncAppleHealthMutation.mutate(healthData);
+          collectedData.push(...healthData);
         }
       });
 
@@ -128,7 +105,19 @@ const HealthScreen = () => {
             endDate: new Date(result.endDate),
             source: 'apple_health',
           }));
-          syncAppleHealthMutation.mutate(healthData);
+          collectedData.push(...healthData);
+        }
+
+        // Sync all collected data
+        if (collectedData.length > 0) {
+          syncHealthMutation.mutate(collectedData, {
+            onSuccess: () => {
+              Alert.alert('Success', 'Health data synced successfully!');
+            },
+            onError: () => {
+              Alert.alert('Error', 'Failed to sync health data');
+            },
+          });
         }
       });
     });
@@ -202,42 +191,42 @@ const HealthScreen = () => {
           </View>
 
           {/* Recent Vitals */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Recent Vitals</Text>
-            {healthData?.vitals?.slice(0, 5).map((vital: HealthMetric) => (
-              <View key={vital.id} style={styles.vitalItem}>
-                <Text style={styles.vitalType}>{vital.type}</Text>
-                <Text style={styles.vitalValue}>
-                  {vital.value} {vital.unit}
-                </Text>
-                <Text style={styles.vitalDate}>
-                  {new Date(vital.date).toLocaleDateString()}
-                </Text>
-              </View>
-            ))}
-          </Card>
+           <Card style={styles.sectionCard}>
+             <Text style={styles.sectionTitle}>Recent Vitals</Text>
+             {metrics.slice(0, 5).map((vital) => (
+               <View key={vital.id} style={styles.vitalItem}>
+                 <Text style={styles.vitalType}>{vital.type}</Text>
+                 <Text style={styles.vitalValue}>
+                   {vital.value} {vital.unit}
+                 </Text>
+                 <Text style={styles.vitalDate}>
+                   {new Date(vital.date).toLocaleDateString()}
+                 </Text>
+               </View>
+             ))}
+           </Card>
 
           {/* Quick Actions */}
-          <View style={styles.actions}>
-            <Button
-              title="Log Weight"
-              onPress={() => {/* Navigate to weight logging */}}
-              style={styles.actionButton}
-            />
-            {Platform.OS === 'ios' && isHealthKitAvailable && (
-              <Button
-                title="Sync Apple Health"
-                onPress={syncAppleHealth}
-                style={styles.actionButton}
-                disabled={syncAppleHealthMutation.isLoading}
-              />
-            )}
-            <Button
-              title="Connect Wearable"
-              onPress={() => {/* Navigate to integrations */}}
-              style={styles.actionButton}
-            />
-          </View>
+           <View style={styles.actions}>
+             <Button
+               title="Log Weight"
+               onPress={() => Alert.alert('Coming Soon', 'Weight logging will be available soon!')}
+               style={styles.actionButton}
+             />
+             {Platform.OS === 'ios' && isHealthKitAvailable && (
+               <Button
+                 title="Sync Apple Health"
+                 onPress={syncAppleHealth}
+                 style={styles.actionButton}
+                 disabled={syncHealthMutation.isLoading}
+               />
+             )}
+             <Button
+               title="Connect Wearable"
+               onPress={() => Alert.alert('Coming Soon', 'Wearable integration will be available soon!')}
+               style={styles.actionButton}
+             />
+           </View>
         </View>
       )}
     </ScrollView>
