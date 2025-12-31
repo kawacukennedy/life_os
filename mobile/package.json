@@ -25,6 +25,7 @@
     "graphql": "^16.8.0",
     "socket.io-client": "^4.7.0",
     "lifeos-shared": "file:../shared",
+    "react-native-health": "^1.0.0",
     "date-fns": "^2.30.0"
   },
   "devDependencies": {

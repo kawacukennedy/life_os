@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import AppleHealthKit, { HealthKitPermissions } from 'react-native-health';
 
 interface HealthMetric {
   id: string;
@@ -14,6 +15,7 @@ interface HealthMetric {
 
 const HealthScreen = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
+  const [isHealthKitAvailable, setIsHealthKitAvailable] = useState(false);
 
   const { data: healthData, isLoading } = useQuery({
     queryKey: ['health', selectedPeriod],
@@ -22,6 +24,115 @@ const HealthScreen = () => {
       return response.json();
     },
   });
+
+  const syncAppleHealthMutation = useMutation({
+    mutationFn: async (healthData: any[]) => {
+      const response = await fetch('/api/health/apple-health/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'user123', healthData }),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      Alert.alert('Success', 'Health data synced successfully!');
+    },
+    onError: () => {
+      Alert.alert('Error', 'Failed to sync health data');
+    },
+  });
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleHealthKit.isAvailable((err: any, available: boolean) => {
+        if (available) {
+          setIsHealthKitAvailable(true);
+        }
+      });
+    }
+  }, []);
+
+  const syncAppleHealth = async () => {
+    if (!isHealthKitAvailable) {
+      Alert.alert('Not Available', 'Apple Health is not available on this device');
+      return;
+    }
+
+    const permissions: HealthKitPermissions = {
+      permissions: {
+        read: [
+          AppleHealthKit.Constants.Permissions.HeartRate,
+          AppleHealthKit.Constants.Permissions.Steps,
+          AppleHealthKit.Constants.Permissions.SleepAnalysis,
+          AppleHealthKit.Constants.Permissions.ActiveEnergyBurned,
+          AppleHealthKit.Constants.Permissions.BodyMass,
+        ],
+        write: [],
+      },
+    };
+
+    AppleHealthKit.initHealthKit(permissions, (err: any) => {
+      if (err) {
+        console.error('Error initializing HealthKit:', err);
+        Alert.alert('Error', 'Failed to initialize Apple Health');
+        return;
+      }
+
+      // Get today's data
+      const options = {
+        startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date().toISOString(),
+      };
+
+      // Get steps
+      AppleHealthKit.getStepCount(options, (err: any, results: any) => {
+        if (!err && results) {
+          const healthData = results.map((result: any) => ({
+            userId: 'user123',
+            dataType: 'HKQuantityTypeIdentifierStepCount',
+            value: result.value,
+            unit: 'count',
+            startDate: new Date(result.startDate),
+            endDate: new Date(result.endDate),
+            source: 'apple_health',
+          }));
+          syncAppleHealthMutation.mutate(healthData);
+        }
+      });
+
+      // Get heart rate
+      AppleHealthKit.getHeartRateSamples(options, (err: any, results: any) => {
+        if (!err && results) {
+          const healthData = results.map((result: any) => ({
+            userId: 'user123',
+            dataType: 'HKQuantityTypeIdentifierHeartRate',
+            value: result.value,
+            unit: 'count/min',
+            startDate: new Date(result.startDate),
+            endDate: new Date(result.endDate),
+            source: 'apple_health',
+          }));
+          syncAppleHealthMutation.mutate(healthData);
+        }
+      });
+
+      // Get sleep
+      AppleHealthKit.getSleepSamples(options, (err: any, results: any) => {
+        if (!err && results) {
+          const healthData = results.map((result: any) => ({
+            userId: 'user123',
+            dataType: 'HKCategoryTypeIdentifierSleepAnalysis',
+            value: (new Date(result.endDate).getTime() - new Date(result.startDate).getTime()) / (1000 * 60 * 60), // hours
+            unit: 'hours',
+            startDate: new Date(result.startDate),
+            endDate: new Date(result.endDate),
+            source: 'apple_health',
+          }));
+          syncAppleHealthMutation.mutate(healthData);
+        }
+      });
+    });
+  };
 
   const periods = [
     { key: 'today', label: 'Today' },
@@ -113,6 +224,14 @@ const HealthScreen = () => {
               onPress={() => {/* Navigate to weight logging */}}
               style={styles.actionButton}
             />
+            {Platform.OS === 'ios' && isHealthKitAvailable && (
+              <Button
+                title="Sync Apple Health"
+                onPress={syncAppleHealth}
+                style={styles.actionButton}
+                disabled={syncAppleHealthMutation.isLoading}
+              />
+            )}
             <Button
               title="Connect Wearable"
               onPress={() => {/* Navigate to integrations */}}
