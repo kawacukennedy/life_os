@@ -17,10 +17,12 @@ import { FinanceController } from './finance.controller';
 import { Transaction } from '../transactions/transaction.entity';
 import { JwtStrategy } from '../auth/jwt.strategy';
 import { CommonModule } from './common.module';
+import { BudgetModule } from '../budgets/budget.module';
 
 @Module({
   imports: [
     CommonModule,
+    BudgetModule,
     TypeOrmModule.forFeature([Transaction]),
     HttpModule,
     PassportModule,
@@ -43,16 +45,17 @@ import { CommonModule } from './common.module';
     ),
   ],
   controllers: [FinanceController],
-   providers: [
-     FinanceService,
-     PlaidService,
-     TransactionCategorizerService,
-     CacheService,
-     BackgroundJobService,
-     EmailProcessor,
-     NotificationProcessor,
-     JwtStrategy,
-   ],
+    providers: [
+      FinanceService,
+      PlaidService,
+      TransactionCategorizerService,
+      CacheService,
+      BackgroundJobService,
+      EmailProcessor,
+      NotificationProcessor,
+      JwtStrategy,
+    ],
+    exports: [FinanceService, CacheService, BackgroundJobService, BudgetService],
   exports: [FinanceService, CacheService, BackgroundJobService],
 })
 export class FinanceModule {}

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Query, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, Headers, Put, Delete, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FinanceService } from './finance.service';
 import { PlaidService } from './plaid.service';
 import { TransactionCategorizerService } from './transaction-categorizer.service';
+import { BudgetService } from '../budgets/budget.service';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard)
@@ -11,6 +12,7 @@ export class FinanceController {
     private readonly financeService: FinanceService,
     private readonly plaidService: PlaidService,
     private readonly categorizerService: TransactionCategorizerService,
+    private readonly budgetService: BudgetService,
   ) {}
 
   @Get('summary')
@@ -103,5 +105,42 @@ export class FinanceController {
   async retrainCategorizationModel(@Body() body: { userId: string }) {
     await this.categorizerService.retrainCategorizationModel(body.userId);
     return { message: 'Model retraining initiated' };
+  }
+
+  // Budget Management
+  @Post('budgets')
+  async createBudget(@Body() body: { userId: string; category: string; amount: number; period?: string }) {
+    return this.budgetService.createBudget(body.userId, {
+      category: body.category,
+      amount: body.amount,
+      period: body.period as any || 'monthly',
+    });
+  }
+
+  @Get('budgets')
+  async getBudgets(@Query('userId') userId: string) {
+    return this.budgetService.getBudgets(userId);
+  }
+
+  @Put('budgets/:id')
+  async updateBudget(@Param('id') id: string, @Body() body: { userId: string; updates: any }) {
+    return this.budgetService.updateBudget(id, body.userId, body.updates);
+  }
+
+  @Delete('budgets/:id')
+  async deleteBudget(@Param('id') id: string, @Query('userId') userId: string) {
+    await this.budgetService.deleteBudget(id, userId);
+    return { message: 'Budget deleted' };
+  }
+
+  @Get('budgets/alerts')
+  async getBudgetAlerts(@Query('userId') userId: string) {
+    return this.budgetService.getBudgetAlerts(userId);
+  }
+
+  @Post('budgets/update-spent')
+  async updateSpentAmounts(@Body() body: { userId: string }) {
+    await this.budgetService.updateSpentAmounts(body.userId);
+    return { message: 'Spent amounts updated' };
   }
 }

@@ -5,6 +5,7 @@ import { Transaction } from '../transactions/transaction.entity';
 import { PlaidService } from './plaid.service';
 import { MonitoringService } from './monitoring.service';
 import { LoggingService } from './logging.service';
+import { BudgetService } from '../budgets/budget.service';
 
 @Injectable()
 export class FinanceService {
@@ -14,6 +15,7 @@ export class FinanceService {
     private plaidService: PlaidService,
     private readonly monitoringService: MonitoringService,
     private readonly loggingService: LoggingService,
+    private readonly budgetService: BudgetService,
   ) {}
 
   async getTransactions(userId: string, limit = 50) {
@@ -119,17 +121,8 @@ export class FinanceService {
         type: t.amount > 0 ? 'income' : 'expense',
       }));
 
-    // Budget alerts (mock for now - would be based on user-defined budgets)
-    const budgetAlerts = topCategories
-      .filter(cat => cat.percentage > 30)
-      .map(cat => ({
-        id: `alert-${cat.category}`,
-        category: cat.category,
-        budgetAmount: cat.amount * 1.2, // Mock budget
-        spentAmount: cat.amount,
-        percentage: cat.percentage,
-        message: `You've spent ${cat.percentage.toFixed(1)}% of your budget on ${cat.category}`,
-      }));
+    // Budget alerts
+    const budgetAlerts = await this.budgetService.getBudgetAlerts(userId);
 
     return {
       userId,
