@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Headers } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { HealthService } from './health.service';
 import { FitbitService } from './fitbit.service';
@@ -73,8 +73,24 @@ export class HealthController {
   }
 
   @Get('fitbit/sync')
-  async syncFitbitData(@Query('accessToken') accessToken: string, @Query('userId') userId: string) {
-    return this.fitbitService.syncHealthData(accessToken, userId);
+  async syncFitbitData(@Query('accessToken') accessToken: string, @Query('userId') userId: string, @Query('date') date?: string) {
+    return this.fitbitService.syncHealthData(accessToken, userId, date);
+  }
+
+  @Post('fitbit/webhook')
+  async handleFitbitWebhook(@Body() body: any, @Headers() headers: any) {
+    await this.fitbitService.handleWebhook(body, headers);
+    return { received: true };
+  }
+
+  @Post('fitbit/subscriptions')
+  async setupFitbitSubscriptions(@Body() body: { accessToken: string; userId: string }) {
+    return this.fitbitService.setupRealTimeSubscriptions(body.accessToken, body.userId);
+  }
+
+  @Get('fitbit/subscriptions')
+  async getFitbitSubscriptions(@Query('accessToken') accessToken: string) {
+    return this.fitbitService.getSubscriptions(accessToken);
   }
 
   // Apple Health Integration

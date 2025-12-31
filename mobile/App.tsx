@@ -4,7 +4,9 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {ApolloProvider} from '@apollo/client';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
-import {AuthProvider, ToastProvider, ThemeProvider} from 'lifeos-shared';
+import {AuthProvider} from './src/contexts/AuthContext';
+import {ToastProvider} from './src/contexts/ToastContext';
+import {ThemeProvider} from './src/contexts/ThemeContext';
 import {GraphQLProvider} from './src/components/GraphQLProvider';
 import {ReactQueryProvider} from './src/components/ReactQueryProvider';
 

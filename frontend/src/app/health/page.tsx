@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Badge } from '@/components/ui/Badge'
+import { HealthDashboard } from '@/components/ui/HealthDashboard'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
@@ -213,48 +214,8 @@ export default function HealthPage() {
             </div>
           </div>
 
-          {/* Health Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Steps</p>
-                  <p className="text-2xl font-bold text-gray-900">{data?.steps?.toLocaleString() || 0}</p>
-                </div>
-                <div className="text-2xl">🚶</div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Heart Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">{data?.heartRate || 0} bpm</p>
-                </div>
-                <div className="text-2xl">❤️</div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Sleep</p>
-                  <p className="text-2xl font-bold text-gray-900">{data?.sleepHours || 0}h</p>
-                </div>
-                <div className="text-2xl">😴</div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Calories</p>
-                  <p className="text-2xl font-bold text-gray-900">{data?.calories || 0}</p>
-                </div>
-                <div className="text-2xl">🔥</div>
-              </div>
-            </Card>
-          </div>
+          {/* Health Dashboard */}
+          <HealthDashboard data={data} className="mb-8" />
 
           {/* Integration Section */}
           <Card className="p-6 mb-8">

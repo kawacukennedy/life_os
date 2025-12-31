@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Badge } from '@/components/ui/Badge'
+import { TaskList } from '@/components/ui/TaskList'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
@@ -314,61 +315,10 @@ export default function TasksPage() {
           )}
 
           {/* Tasks List */}
-          <div className="space-y-4">
-            {filteredTasks.map((task: Task) => (
-              <Card key={task.id} className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <input
-                      type="checkbox"
-                      checked={task.status === 'completed'}
-                      onChange={() => handleToggleTask(task.id, task.status)}
-                      className="w-5 h-5 text-primary-start rounded focus:ring-primary-start"
-                    />
-                    <div className="flex-1">
-                      <h3 className={`text-lg font-medium ${
-                        task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
-                      }`}>
-                        {task.title}
-                      </h3>
-                      {task.description && (
-                        <p className="text-gray-600 mt-1">{task.description}</p>
-                      )}
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Badge className={getPriorityColor(task.priority)}>
-                          Priority {task.priority}
-                        </Badge>
-                        <Badge className={getStatusColor(task.status)}>
-                          {task.status.replace('_', ' ')}
-                        </Badge>
-                        {task.dueAt && (
-                          <span className="text-sm text-gray-500">
-                            Due: {new Date(task.dueAt).toLocaleDateString()}
-                          </span>
-                        )}
-                        {task.durationMinutes && (
-                          <span className="text-sm text-gray-500">
-                            {task.durationMinutes}min
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {new Date(task.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </Card>
-            ))}
-            {filteredTasks.length === 0 && (
-              <Card className="p-12 text-center">
-                <p className="text-gray-500 mb-4">No tasks found.</p>
-                <Button onClick={() => setShowNewTaskForm(true)}>
-                  Create Your First Task
-                </Button>
-              </Card>
-            )}
-          </div>
+          <TaskList
+            tasks={filteredTasks}
+            onTaskUpdate={refetch}
+          />
         </div>
       </div>
     </div>

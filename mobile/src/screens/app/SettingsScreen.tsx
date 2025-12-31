@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert} from 'react-native';
 import {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
-import {useAuth, useTheme} from 'lifeos-shared';
+import {useAuth} from '../../contexts/AuthContext';
+import {useTheme} from '../../contexts/ThemeContext';
 
 import {AppTabParamList} from '../../navigation/AppNavigator';
 

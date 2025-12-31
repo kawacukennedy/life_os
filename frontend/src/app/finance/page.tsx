@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Badge } from '@/components/ui/Badge'
+import { FinanceOverview } from '@/components/ui/FinanceOverview'
 import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
@@ -269,56 +270,15 @@ export default function FinancePage() {
             </div>
           </div>
 
-          {/* Finance Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Balance</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    ${data?.totalBalance?.toLocaleString() || 0}
-                  </p>
-                </div>
-                <div className="text-2xl">💰</div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Monthly Income</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    ${data?.monthlyIncome?.toLocaleString() || 0}
-                  </p>
-                </div>
-                <div className="text-2xl">📈</div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Monthly Expenses</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    ${data?.monthlyExpenses?.toLocaleString() || 0}
-                  </p>
-                </div>
-                <div className="text-2xl">📉</div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Savings Rate</p>
-                  <p className={`text-2xl font-bold ${data?.savingsRate >= 20 ? 'text-green-600' : data?.savingsRate >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {data?.savingsRate?.toFixed(1) || 0}%
-                  </p>
-                </div>
-                <div className="text-2xl">💸</div>
-              </div>
-            </Card>
-          </div>
+          {/* Finance Overview */}
+          <FinanceOverview
+            totalBalance={data?.totalBalance || 0}
+            monthlyIncome={data?.monthlyIncome || 0}
+            monthlyExpenses={data?.monthlyExpenses || 0}
+            savingsRate={data?.savingsRate || 0}
+            recentTransactions={data?.recentTransactions || []}
+            className="mb-8"
+          />
 
           {/* Integration Section */}
           <Card className="p-6 mb-8">
@@ -386,25 +346,7 @@ export default function FinancePage() {
             </Card>
           )}
 
-          {/* Recent Transactions */}
-          {data?.recentTransactions && data.recentTransactions.length > 0 && (
-            <Card className="p-6 mb-8">
-              <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
-              <div className="space-y-3">
-                {data.recentTransactions.slice(0, 10).map((transaction: Transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100">
-                    <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <p className="text-sm text-gray-600">{transaction.category} • {new Date(transaction.date).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+
 
           {/* AI Insights */}
           {insightsData?.getFinanceInsights?.insights && (

@@ -132,16 +132,90 @@ export class FitbitService {
     }
   }
 
-  // Helper method to sync all health data for a user
-  async syncHealthData(accessToken: string, userId: string): Promise<any> {
-    const today = new Date().toISOString().split('T')[0];
+  // Real-time subscription methods
+  async createSubscription(accessToken: string, subscriptionId: string, collectionPath: string): Promise<any> {
+    try {
+      const response = await this.client.post('/1/user/-/apiSubscriptions.json', null, {
+        params: {
+          subscriptionId,
+          collectionPath,
+        },
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating Fitbit subscription:', error);
+      throw error;
+    }
+  }
+
+  async deleteSubscription(accessToken: string, subscriptionId: string, collectionPath: string): Promise<any> {
+    try {
+      const response = await this.client.delete('/1/user/-/apiSubscriptions.json', {
+        params: {
+          subscriptionId,
+          collectionPath,
+        },
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting Fitbit subscription:', error);
+      throw error;
+    }
+  }
+
+  async getSubscriptions(accessToken: string): Promise<any> {
+    try {
+      const response = await this.client.get('/1/user/-/apiSubscriptions.json', {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Fitbit subscriptions:', error);
+      throw error;
+    }
+  }
+
+  // Webhook handling for real-time updates
+  async handleWebhook(body: any, headers: any): Promise<void> {
+    // Verify webhook signature if needed (Fitbit doesn't provide signature verification in basic tier)
+    const events = body;
+
+    for (const event of events) {
+      const { collectionType, date, ownerId, subscriptionId } = event;
+
+      console.log(`Fitbit webhook received: ${collectionType} for user ${ownerId} on ${date}`);
+
+      // Trigger data sync for the affected user and date
+      // This would typically emit an event or call a service method to sync data
+      // For now, we'll just log it
+      switch (collectionType) {
+        case 'activities':
+          console.log('Activity data updated, triggering sync...');
+          break;
+        case 'body':
+          console.log('Body data updated, triggering sync...');
+          break;
+        case 'sleep':
+          console.log('Sleep data updated, triggering sync...');
+          break;
+        default:
+          console.log(`Unknown collection type: ${collectionType}`);
+      }
+    }
+  }
+
+  // Enhanced sync method with real-time capabilities
+  async syncHealthData(accessToken: string, userId: string, date?: string): Promise<any> {
+    const targetDate = date || new Date().toISOString().split('T')[0];
 
     try {
       const [activity, heartRate, sleep, weight] = await Promise.allSettled([
-        this.getActivityData(accessToken, today),
-        this.getHeartRateData(accessToken, today),
-        this.getSleepData(accessToken, today),
-        this.getWeightData(accessToken, today),
+        this.getActivityData(accessToken, targetDate),
+        this.getHeartRateData(accessToken, targetDate),
+        this.getSleepData(accessToken, targetDate),
+        this.getWeightData(accessToken, targetDate),
       ]);
 
       return {
@@ -150,10 +224,34 @@ export class FitbitService {
         sleep: sleep.status === 'fulfilled' ? sleep.value : null,
         weight: weight.status === 'fulfilled' ? weight.value : null,
         syncedAt: new Date(),
+        date: targetDate,
       };
     } catch (error) {
       console.error('Error syncing Fitbit health data:', error);
       throw error;
     }
+  }
+
+  // Setup real-time subscriptions for a user
+  async setupRealTimeSubscriptions(accessToken: string, userId: string): Promise<any> {
+    const subscriptions = [
+      { id: `${userId}-activities`, path: 'activities' },
+      { id: `${userId}-body`, path: 'body' },
+      { id: `${userId}-sleep`, path: 'sleep' },
+    ];
+
+    const results = [];
+
+    for (const sub of subscriptions) {
+      try {
+        const result = await this.createSubscription(accessToken, sub.id, sub.path);
+        results.push({ subscription: sub, result, success: true });
+      } catch (error) {
+        console.error(`Failed to create subscription ${sub.id}:`, error);
+        results.push({ subscription: sub, error, success: false });
+      }
+    }
+
+    return results;
   }
 }

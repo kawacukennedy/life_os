@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useAuth } from 'lifeos-shared';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface HealthMetric {
   id: string;
