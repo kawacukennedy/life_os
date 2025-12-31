@@ -626,6 +626,74 @@ Return JSON with:
     }
   }
 
+  async categorizeTransaction(transaction: any): Promise<any> {
+    const startTime = Date.now();
+    try {
+      const prompt = `Categorize this financial transaction:
+Description: ${transaction.description}
+Amount: ${transaction.amount}
+Merchant: ${transaction.merchantName || 'Unknown'}
+Date: ${transaction.date}
+
+Return JSON with:
+{
+  "category": "main category (e.g., Food & Dining, Transportation, Shopping)",
+  "subcategory": "specific subcategory (e.g., Restaurants, Gas, Clothing)",
+  "confidence": 0.0-1.0,
+  "merchant": "normalized merchant name",
+  "tags": ["relevant", "tags"]
+}`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200,
+        temperature: 0.2,
+      });
+
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('categorize_transaction', 'gpt-3.5-turbo', duration, true);
+
+      const content = response.choices[0]?.message?.content;
+      if (content) {
+        const result = JSON.parse(content);
+        this.loggingService.logAiInference('categorize_transaction', 'gpt-3.5-turbo', duration, true);
+        return result;
+      }
+
+      return this.fallbackCategorization(transaction);
+    } catch (error) {
+      const duration = (Date.now() - startTime) / 1000;
+      this.monitoringService.recordAiInference('categorize_transaction', 'gpt-3.5-turbo', duration, false);
+      this.loggingService.logError(error, 'categorizeTransaction');
+      return this.fallbackCategorization(transaction);
+    }
+  }
+
+  private fallbackCategorization(transaction: any): any {
+    const description = transaction.description.toLowerCase();
+    const merchant = (transaction.merchantName || '').toLowerCase();
+
+    // Simple rule-based fallback
+    if (description.includes('restaurant') || description.includes('cafe')) {
+      return {
+        category: 'Food & Dining',
+        subcategory: 'Restaurants',
+        confidence: 0.8,
+        merchant: transaction.merchantName || 'Unknown',
+        tags: ['food'],
+      };
+    }
+
+    return {
+      category: 'Other',
+      subcategory: 'Miscellaneous',
+      confidence: 0.5,
+      merchant: transaction.merchantName || 'Unknown',
+      tags: [],
+    };
+  }
+
   private fallbackProactiveSuggestions(userData: any): any[] {
     const suggestions = [
       {

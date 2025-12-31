@@ -55,4 +55,9 @@ export class AIController {
     async getProactiveSuggestions(@Body() body: { userId: string; userData: any }) {
       return { suggestions: await this.aiService.generateProactiveSuggestions(body.userId, body.userData) };
     }
+
+    @Post('categorize-transaction')
+    async categorizeTransaction(@Body() body: { transaction: any }) {
+      return this.aiService.categorizeTransaction(body.transaction);
+    }
   }
