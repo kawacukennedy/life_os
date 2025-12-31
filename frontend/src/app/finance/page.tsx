@@ -10,7 +10,8 @@ import { useToast } from '@/contexts/ToastContext'
 import { useAnalytics } from '@/lib/analytics'
 import gql from 'graphql-tag'
 import { print } from 'graphql'
-import { useQuery as useApolloQuery } from '@apollo/client'
+import { useQuery as useApolloQuery, useMutation } from '@apollo/client'
+import { usePlaidLink } from 'react-plaid-link'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +59,23 @@ const GET_FINANCE_INSIGHTS = gql`
         actionable
         createdAt
       }
+    }
+  }
+`
+
+const CREATE_PLAID_LINK_TOKEN = gql`
+  mutation CreatePlaidLinkToken($userId: String!) {
+    createPlaidLinkToken(userId: $userId) {
+      linkToken
+    }
+  }
+`
+
+const EXCHANGE_PLAID_PUBLIC_TOKEN = gql`
+  mutation ExchangePlaidPublicToken($publicToken: String!, $userId: String!) {
+    exchangePlaidPublicToken(publicToken: $publicToken, userId: $userId) {
+      success
+      message
     }
   }
 `
@@ -121,16 +139,71 @@ export default function FinancePage() {
     variables: { userId },
   })
 
+  const [createLinkToken] = useMutation(CREATE_PLAID_LINK_TOKEN)
+  const [exchangePublicToken] = useMutation(EXCHANGE_PLAID_PUBLIC_TOKEN)
+
+  const [linkToken, setLinkToken] = useState<string | null>(null)
+
   useEffect(() => {
     refetch()
   }, [selectedPeriod])
 
+  useEffect(() => {
+    const getLinkToken = async () => {
+      try {
+        const { data } = await createLinkToken({ variables: { userId } })
+        setLinkToken(data.createPlaidLinkToken.linkToken)
+      } catch (error) {
+        console.error('Error creating Plaid link token:', error)
+      }
+    }
+    getLinkToken()
+  }, [createLinkToken, userId])
+
+  const { open, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: async (publicToken, metadata) => {
+      try {
+        await exchangePublicToken({
+          variables: { publicToken, userId },
+        })
+        addToast({
+          title: 'Bank Connected',
+          description: 'Your bank account has been successfully connected.',
+        })
+        trackEvent('plaid_connect_success')
+        refetch() // Refresh finance data
+      } catch (error) {
+        console.error('Error exchanging public token:', error)
+        addToast({
+          title: 'Connection Failed',
+          description: 'Failed to connect your bank account. Please try again.',
+          variant: 'destructive',
+        })
+      }
+    },
+    onExit: (err, metadata) => {
+      if (err) {
+        console.error('Plaid Link error:', err)
+        addToast({
+          title: 'Connection Cancelled',
+          description: 'Bank connection was cancelled.',
+          variant: 'destructive',
+        })
+      }
+    },
+  })
+
   const handleConnectPlaid = () => {
     trackEvent('plaid_connect_attempted')
-    addToast({
-      title: 'Connecting to Bank',
-      description: 'Redirecting to secure bank connection...',
-    })
+    if (ready) {
+      open()
+    } else {
+      addToast({
+        title: 'Loading',
+        description: 'Please wait while we prepare the secure connection...',
+      })
+    }
   }
 
   const getAlertSeverity = (percentage: number) => {
