@@ -44,7 +44,8 @@ export class HealthAnomalyDetectorService {
     const historicalData = await this.getHistoricalData(userId, vitalType, 30); // Last 30 days
 
     const baseline = this.calculateBaseline(historicalData);
-    const isAnomaly = this.isAnomalous(currentValue, baseline, vitalType);
+    const timeSeriesAnomaly = this.detectTimeSeriesAnomaly(historicalData, currentValue);
+    const isAnomaly = this.isAnomalous(currentValue, baseline, vitalType) || timeSeriesAnomaly.isAnomaly;
 
     if (!isAnomaly) {
       return {
@@ -56,8 +57,14 @@ export class HealthAnomalyDetectorService {
       };
     }
 
-    const severity = this.calculateSeverity(currentValue, vitalType);
-    const reason = this.generateReason(currentValue, baseline, vitalType);
+    const severity = Math.max(
+      this.calculateSeverity(currentValue, vitalType),
+      timeSeriesAnomaly.severity === 'high' ? 2 : timeSeriesAnomaly.severity === 'medium' ? 1 : 0
+    ) as 'low' | 'medium' | 'high';
+
+    const reason = timeSeriesAnomaly.isAnomaly
+      ? timeSeriesAnomaly.reason
+      : this.generateReason(currentValue, baseline, vitalType);
     const recommendedAction = this.generateRecommendedAction(vitalType, severity);
 
     return {
@@ -65,7 +72,10 @@ export class HealthAnomalyDetectorService {
       severity,
       reason,
       recommendedAction,
-      confidence: this.calculateConfidence(currentValue, baseline, historicalData),
+      confidence: Math.max(
+        this.calculateConfidence(currentValue, baseline, historicalData),
+        timeSeriesAnomaly.confidence
+      ),
     };
   }
 
@@ -179,6 +189,97 @@ export class HealthAnomalyDetectorService {
     if (zScore > 2) return 0.85;
     if (zScore > 1) return 0.75;
     return 0.7;
+  }
+
+  private detectTimeSeriesAnomaly(historicalData: number[], currentValue: number): {
+    isAnomaly: boolean;
+    severity: 'low' | 'medium' | 'high';
+    reason: string;
+    confidence: number;
+  } {
+    if (historicalData.length < 7) {
+      return { isAnomaly: false, severity: 'low', reason: '', confidence: 0 };
+    }
+
+    // Calculate moving averages
+    const shortMA = this.calculateMovingAverage(historicalData.slice(0, 7)); // Last 7 days
+    const longMA = this.calculateMovingAverage(historicalData.slice(0, 14)); // Last 14 days
+
+    // Detect trend changes
+    const recentTrend = this.calculateTrend(historicalData.slice(0, 7));
+    const overallTrend = this.calculateTrend(historicalData.slice(0, 14));
+
+    // Sudden spikes or drops
+    const recentAvg = shortMA;
+    const deviation = Math.abs(currentValue - recentAvg);
+    const relativeDeviation = recentAvg > 0 ? deviation / recentAvg : 0;
+
+    // Trend reversal detection
+    const trendReversal = Math.sign(recentTrend) !== Math.sign(overallTrend) &&
+                         Math.abs(recentTrend) > 0.1 && Math.abs(overallTrend) > 0.1;
+
+    if (relativeDeviation > 0.5) { // 50% deviation from recent average
+      return {
+        isAnomaly: true,
+        severity: relativeDeviation > 1.0 ? 'high' : 'medium',
+        reason: `Sudden ${currentValue > recentAvg ? 'spike' : 'drop'} of ${(relativeDeviation * 100).toFixed(1)}% from recent average`,
+        confidence: 0.8,
+      };
+    }
+
+    if (trendReversal) {
+      return {
+        isAnomaly: true,
+        severity: 'medium',
+        reason: `Significant trend reversal detected in recent measurements`,
+        confidence: 0.75,
+      };
+    }
+
+    // Seasonal pattern detection (simplified)
+    const seasonalAnomaly = this.detectSeasonalAnomaly(historicalData, currentValue);
+    if (seasonalAnomaly) {
+      return {
+        isAnomaly: true,
+        severity: 'low',
+        reason: 'Value deviates from expected seasonal pattern',
+        confidence: 0.7,
+      };
+    }
+
+    return { isAnomaly: false, severity: 'low', reason: '', confidence: 0 };
+  }
+
+  private calculateMovingAverage(data: number[]): number {
+    return data.reduce((sum, val) => sum + val, 0) / data.length;
+  }
+
+  private calculateTrend(data: number[]): number {
+    if (data.length < 2) return 0;
+
+    // Simple linear trend
+    const n = data.length;
+    const sumX = (n * (n - 1)) / 2;
+    const sumY = data.reduce((sum, val) => sum + val, 0);
+    const sumXY = data.reduce((sum, val, index) => sum + val * index, 0);
+    const sumXX = (n * (n - 1) * (2 * n - 1)) / 6;
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    return slope;
+  }
+
+  private detectSeasonalAnomaly(historicalData: number[], currentValue: number): boolean {
+    if (historicalData.length < 14) return false;
+
+    // Check if current value is outlier compared to same "day of week" pattern
+    // Simplified: compare to values 7 days ago
+    const weekAgoIndex = Math.min(7, historicalData.length - 1);
+    const weekAgoValue = historicalData[weekAgoIndex];
+
+    const deviation = Math.abs(currentValue - weekAgoValue);
+    const relativeDeviation = weekAgoValue > 0 ? deviation / weekAgoValue : 0;
+
+    return relativeDeviation > 0.3; // 30% deviation from same period last week
   }
 
   async detectAnomaliesForUser(userId: string): Promise<AnomalyResult[]> {
