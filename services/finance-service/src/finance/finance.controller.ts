@@ -4,6 +4,7 @@ import { FinanceService } from './finance.service';
 import { PlaidService } from './plaid.service';
 import { TransactionCategorizerService } from './transaction-categorizer.service';
 import { BudgetService } from '../budgets/budget.service';
+import { InvestmentService } from '../investments/investment.service';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard)
@@ -13,6 +14,7 @@ export class FinanceController {
     private readonly plaidService: PlaidService,
     private readonly categorizerService: TransactionCategorizerService,
     private readonly budgetService: BudgetService,
+    private readonly investmentService: InvestmentService,
   ) {}
 
   @Get('summary')
@@ -142,5 +144,32 @@ export class FinanceController {
   async updateSpentAmounts(@Body() body: { userId: string }) {
     await this.budgetService.updateSpentAmounts(body.userId);
     return { message: 'Spent amounts updated' };
+  }
+
+  // Investment Management
+  @Get('investments/accounts')
+  async getInvestmentAccounts(@Query('userId') userId: string) {
+    return this.investmentService.getAccounts(userId);
+  }
+
+  @Get('investments/portfolio')
+  async getPortfolioSummary(@Query('userId') userId: string) {
+    return this.investmentService.getPortfolioSummary(userId);
+  }
+
+  @Get('investments/market-data')
+  async getMarketData(@Query('symbols') symbols: string) {
+    const symbolArray = symbols.split(',');
+    return this.investmentService.getMarketData(symbolArray);
+  }
+
+  @Post('investments/connect-alpaca')
+  async connectAlpacaAccount(@Body() body: { userId: string; credentials: any }) {
+    return this.investmentService.connectAlpacaAccount(body.userId, body.credentials);
+  }
+
+  @Post('investments/sync')
+  async syncInvestments(@Body() body: { userId: string }) {
+    return this.investmentService.syncInvestments(body.userId);
   }
 }

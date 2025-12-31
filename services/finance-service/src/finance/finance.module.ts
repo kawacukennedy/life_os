@@ -18,11 +18,13 @@ import { Transaction } from '../transactions/transaction.entity';
 import { JwtStrategy } from '../auth/jwt.strategy';
 import { CommonModule } from './common.module';
 import { BudgetModule } from '../budgets/budget.module';
+import { InvestmentModule } from '../investments/investment.module';
 
 @Module({
   imports: [
     CommonModule,
     BudgetModule,
+    InvestmentModule,
     TypeOrmModule.forFeature([Transaction]),
     HttpModule,
     PassportModule,
