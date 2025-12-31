@@ -4,6 +4,7 @@ import { HealthService } from './health.service';
 import { FitbitService } from './fitbit.service';
 import { AppleHealthService, AppleHealthData } from './apple-health.service';
 import { HealthAnomalyDetectorService } from './health-anomaly-detector.service';
+import { NutritionService } from '../nutrition/nutrition.service';
 
 @Controller('health')
 @UseGuards(JwtAuthGuard)
@@ -13,6 +14,7 @@ export class HealthController {
     private readonly fitbitService: FitbitService,
     private readonly appleHealthService: AppleHealthService,
     private readonly anomalyDetector: HealthAnomalyDetectorService,
+    private readonly nutritionService: NutritionService,
   ) {}
 
   @Get('summary')
@@ -110,5 +112,43 @@ export class HealthController {
   @Get('anomalies/user/:userId')
   async detectAnomaliesForUser(@Param('userId') userId: string) {
     return this.anomalyDetector.detectAnomaliesForUser(userId);
+  }
+
+  // Nutrition Tracking
+  @Post('nutrition/meals')
+  async logMeal(@Body() body: { userId: string; meal: any }) {
+    return this.nutritionService.logMeal(body.userId, body.meal);
+  }
+
+  @Get('nutrition/meals')
+  async getMeals(@Query('userId') userId: string, @Query('date') date?: string) {
+    const targetDate = date ? new Date(date) : undefined;
+    return this.nutritionService.getMeals(userId, targetDate);
+  }
+
+  @Get('nutrition/summary')
+  async getNutritionSummary(@Query('userId') userId: string, @Query('date') date?: string) {
+    const targetDate = date ? new Date(date) : undefined;
+    return this.nutritionService.getNutritionSummary(userId, targetDate);
+  }
+
+  @Get('nutrition/foods/search')
+  async searchFoods(@Query('query') query: string) {
+    return this.nutritionService.searchFoods(query);
+  }
+
+  @Get('nutrition/goals')
+  async getNutritionGoals(@Query('userId') userId: string) {
+    return this.nutritionService.getNutritionGoals(userId);
+  }
+
+  @Put('nutrition/goals')
+  async updateNutritionGoals(@Body() body: { userId: string; goals: any }) {
+    return this.nutritionService.updateNutritionGoals(body.userId, body.goals);
+  }
+
+  @Get('nutrition/suggestions')
+  async getMealSuggestions(@Query('userId') userId: string, @Query('mealType') mealType: string) {
+    return this.nutritionService.getMealSuggestions(userId, mealType);
   }
 }

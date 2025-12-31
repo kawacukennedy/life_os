@@ -9,6 +9,7 @@ import { HealthService } from './health.service';
 import { FitbitService } from './fitbit.service';
 import { AppleHealthService } from './apple-health.service';
 import { HealthAnomalyDetectorService } from './health-anomaly-detector.service';
+import { NutritionModule } from '../nutrition/nutrition.module';
 import { CacheService } from '../auth/cache.service';
 import { BackgroundJobService } from '../auth/background-job.service';
 import { EmailProcessor } from '../auth/email.processor';
@@ -19,6 +20,7 @@ import { JwtStrategy } from '../auth/jwt.strategy';
 
 @Module({
   imports: [
+    NutritionModule,
     TypeOrmModule.forFeature([Vital]),
     PassportModule,
     JwtModule.register({
