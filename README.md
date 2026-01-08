@@ -100,6 +100,73 @@ This is a microservices architecture with:
     cd frontend && npm run dev
     ```
 
+## User Guide
+
+### Getting Started with LifeOS
+
+#### 1. Account Setup
+1. Visit the LifeOS web application or download the mobile app
+2. Click "Sign Up" and create your account with email and password
+3. Verify your email address
+4. Complete your profile with personal information and preferences
+
+#### 2. Connecting Integrations
+LifeOS integrates with various services to provide comprehensive life management:
+
+**Google Integration:**
+- Connect your Google account for calendar synchronization
+- Grant permissions for calendar access
+- Your events will automatically sync with LifeOS
+
+**Fitbit Integration:**
+- Link your Fitbit account for health data
+- Authorize data sharing for steps, sleep, and heart rate
+- Health metrics will appear in your dashboard
+
+**Financial Integration:**
+- Connect your bank accounts via Plaid
+- Select accounts to monitor (checking, savings, credit cards)
+- Transaction data will be securely imported and categorized
+
+#### 3. Using the Dashboard
+The unified dashboard provides an overview of all your life areas:
+
+- **Health**: View daily steps, sleep quality, and fitness trends
+- **Finance**: Monitor account balances and spending patterns
+- **Learning**: Track course progress and upcoming lessons
+- **Tasks**: Manage daily tasks and productivity goals
+- **AI Assistant**: Get personalized suggestions and reminders
+
+#### 4. Managing Tasks and Routines
+- Create tasks with due dates and priorities
+- Set up recurring routines for daily habits
+- Use the AI assistant to optimize your schedule
+- Receive smart notifications for upcoming deadlines
+
+#### 5. Learning and Development
+- Browse available courses by category
+- Track your learning progress and achievements
+- Receive personalized course recommendations
+- Complete lessons and earn certificates
+
+#### 6. Privacy and Security
+- Control data sharing preferences in settings
+- Export your data anytime
+- Manage connected integrations
+- Set notification preferences
+
+### Advanced Features
+
+#### AI-Powered Insights
+LifeOS uses AI to provide personalized recommendations:
+- Schedule optimization based on your energy patterns
+- Learning recommendations based on your interests
+- Financial insights and budgeting suggestions
+- Health goals and habit formation assistance
+
+#### Custom Integrations
+Developers can create custom plugins and integrations using the LifeOS API and SDKs.
+
 ## API Documentation
 
 LifeOS uses GraphQL as the primary API with REST endpoints for specific services. Access the GraphQL playground at `http://localhost:3001/graphql`.
