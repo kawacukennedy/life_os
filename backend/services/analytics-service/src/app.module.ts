@@ -23,11 +23,10 @@ import { Dashboard } from "./analytics/dashboard.entity";
       port: parseInt(process.env.DB_PORT) || 5432,
       username: process.env.DB_USERNAME || "postgres",
       password: process.env.DB_PASSWORD || "password",
-      database: process.env.DB_NAME || "lifeos_analytics",
+      database: process.env.DB_NAME || "lifeos",
       entities: [Event, Metric, Dashboard],
-      migrations: ["dist/migrations/*.js"],
-      synchronize: process.env.NODE_ENV !== "production", // Only sync in development
-      migrationsRun: process.env.NODE_ENV === "production", // Run migrations in production
+      migrations: ["src/migrations/*.ts"],
+      synchronize: false,
     }),
     JwtModule.register({
       global: true,
