@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationModule } from './notifications/notification.module';
 import { Notification } from './notifications/notification.entity';
+import { PushSubscription } from './notifications/push-subscription.entity';
 
 @Module({
   imports: [
@@ -14,8 +15,9 @@ import { Notification } from './notifications/notification.entity';
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || 'password',
       database: process.env.DB_NAME || 'lifeos',
-      entities: [Notification],
-      synchronize: true,
+      entities: [Notification, PushSubscription],
+      migrations: ['src/migrations/*.ts'],
+      synchronize: false,
     }),
     NotificationModule,
   ],
