@@ -24,6 +24,9 @@
     "@tanstack/react-query": "^5.0.0",
     "graphql": "^16.8.0",
     "socket.io-client": "^4.7.0",
+    "@react-native-async-storage/async-storage": "^1.19.3",
+    "@react-native-community/netinfo": "^9.4.1",
+    "react-native-deep-linking": "^2.2.0",
 
     "react-native-health": "^1.0.0",
     "date-fns": "^2.30.0"
