@@ -26,9 +26,8 @@ import { Connection } from "./connections/connection.entity";
       password: process.env.DB_PASSWORD || "password",
       database: process.env.DB_NAME || "lifeos_social",
       entities: [Connection],
-      migrations: ["dist/migrations/*.js"],
-      synchronize: process.env.NODE_ENV !== "production",
-      migrationsRun: process.env.NODE_ENV === "production",
+      migrations: ["src/migrations/*.ts"],
+      synchronize: false,
     }),
     JwtModule.register({
       global: true,
