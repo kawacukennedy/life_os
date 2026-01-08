@@ -1,0 +1,45 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'lifeos-services'
+    static_configs:
+      - targets:
+          - 'auth-service:3001'
+          - 'health-service:3002'
+          - 'finance-service:3003'
+          - 'learning-service:3004'
+          - 'notification-service:3005'
+          - 'ai-inference-service:3006'
+          - 'analytics-service:3007'
+          - 'task-service:3008'
+          - 'plugin-service:3009'
+          - 'social-service:3010'
+          - 'subscription-service:3011'
+          - 'api-gateway:3000'
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  - job_name: 'frontend'
+    static_configs:
+      - targets: ['frontend:3000']
+    metrics_path: '/api/metrics'
