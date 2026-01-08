@@ -4,6 +4,9 @@ import './globals.css'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { ReactQueryProvider } from '@/components/ReactQueryProvider'
 import Navigation from '@/components/Navigation'
+import { ApolloProvider } from '@apollo/client'
+import client from '@/components/GraphQLProvider'
+import { PerformanceMonitor } from '@/lib/performance'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -57,15 +60,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Initialize performance monitoring
+  if (typeof window !== 'undefined') {
+    PerformanceMonitor.init()
+  }
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ReactQueryProvider>
-          <ToastProvider>
-            <Navigation />
-            <main>{children}</main>
-          </ToastProvider>
-        </ReactQueryProvider>
+        <ApolloProvider client={client}>
+          <ReactQueryProvider>
+            <ToastProvider>
+              <Navigation />
+              <main>{children}</main>
+            </ToastProvider>
+          </ReactQueryProvider>
+        </ApolloProvider>
       </body>
     </html>
   )
