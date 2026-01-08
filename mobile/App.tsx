@@ -7,7 +7,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {AuthProvider} from './src/contexts/AuthContext';
 import {ToastProvider} from './src/contexts/ToastContext';
 import {ThemeProvider} from './src/contexts/ThemeContext';
-import {GraphQLProvider} from './src/components/GraphQLProvider';
+import {GraphQLProvider, GraphQLProviderComponent} from './src/components/GraphQLProvider';
 import {ReactQueryProvider} from './src/components/ReactQueryProvider';
 
 import RootNavigator from './src/navigation/RootNavigator';
@@ -20,13 +20,15 @@ const App = () => {
       <ThemeProvider>
         <AuthProvider>
           <ApolloProvider client={GraphQLProvider()}>
-            <QueryClientProvider client={queryClient}>
-              <ToastProvider>
-                <NavigationContainer>
-                  <RootNavigator />
-                </NavigationContainer>
-              </ToastProvider>
-            </QueryClientProvider>
+            <GraphQLProviderComponent>
+              <QueryClientProvider client={queryClient}>
+                <ToastProvider>
+                  <NavigationContainer>
+                    <RootNavigator />
+                  </NavigationContainer>
+                </ToastProvider>
+              </QueryClientProvider>
+            </GraphQLProviderComponent>
           </ApolloProvider>
         </AuthProvider>
       </ThemeProvider>
