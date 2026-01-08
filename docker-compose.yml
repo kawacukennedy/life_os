@@ -123,41 +123,44 @@ services:
     depends_on:
       - api-gateway
 
-    api-gateway:
-      build:
-        context: ./backend/services/api-gateway
-      ports:
-        - "3001:3001"
-      environment:
-        - NODE_ENV=production
-        - AUTH_SERVICE_URL=http://auth-service:3000
-        - USER_PROFILE_SERVICE_URL=http://user-profile-service:3002
-        - HEALTH_SERVICE_URL=http://health-service:3003
-        - FINANCE_SERVICE_URL=http://finance-service:3004
-        - LEARNING_SERVICE_URL=http://learning-service:3005
-        - NOTIFICATION_SERVICE_URL=http://notification-service:3005
-        - AI_SERVICE_URL=http://ai-inference-service:3006
-        - ANALYTICS_SERVICE_URL=http://analytics-service:3007
-        - TASK_SERVICE_URL=http://task-service:3008
-        - PLUGIN_SERVICE_URL=http://plugin-service:3009
-        - SOCIAL_SERVICE_URL=http://social-service:3010
-        - SUBSCRIPTION_SERVICE_URL=http://subscription-service:3011
-      depends_on:
-        - auth-service
-        - user-profile-service
-        - health-service
-        - finance-service
-        - learning-service
-        - notification-service
-        - ai-inference-service
-        - analytics-service
-        - plugin-service
-        - social-service
-        - subscription-service
+  api-gateway:
+    build:
+      context: ./backend/services/api-gateway
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - USER_PROFILE_SERVICE_URL=http://user-profile-service:3002
+      - HEALTH_SERVICE_URL=http://health-service:3003
+      - FINANCE_SERVICE_URL=http://finance-service:3004
+      - LEARNING_SERVICE_URL=http://learning-service:3005
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3006
+      - AI_SERVICE_URL=http://ai-inference-service:3007
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3008
+      - TASK_SERVICE_URL=http://task-service:3009
+      - PLUGIN_SERVICE_URL=http://plugin-service:3010
+      - SOCIAL_SERVICE_URL=http://social-service:3011
+      - SUBSCRIPTION_SERVICE_URL=http://subscription-service:3012
+    depends_on:
+      - auth-service
+      - user-profile-service
+      - health-service
+      - finance-service
+      - learning-service
+      - notification-service
+      - ai-inference-service
+      - analytics-service
+      - task-service
+      - plugin-service
+      - social-service
+      - subscription-service
 
   auth-service:
     build:
       context: ./backend/services/auth-service
+    ports:
+      - "3000:3000"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -172,9 +175,11 @@ services:
       redis:
         condition: service_healthy
 
-  health-service:
+  user-profile-service:
     build:
-      context: ./backend/services/health-service
+      context: ./backend/services/user-profile-service
+    ports:
+      - "3002:3002"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -186,165 +191,185 @@ services:
       postgres:
         condition: service_healthy
 
-   finance-service:
-     build:
-       context: ./backend/services/finance-service
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-     depends_on:
-       postgres:
-         condition: service_healthy
+  health-service:
+    build:
+      context: ./backend/services/health-service
+    ports:
+      - "3003:3003"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-   learning-service:
-     build:
-       context: ./backend/services/learning-service
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-     depends_on:
-       postgres:
-         condition: service_healthy
+  finance-service:
+    build:
+      context: ./backend/services/finance-service
+    ports:
+      - "3004:3004"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-    notification-service:
-      build:
-        context: ./backend/services/notification-service
-      ports:
-        - "3005:3005"
-      environment:
-        - DB_HOST=postgres
-        - DB_PORT=5432
-        - DB_USERNAME=postgres
-        - DB_PASSWORD=password
-        - DB_NAME=lifeos
-        - JWT_SECRET=your-secret-key
-        - SMTP_HOST=smtp.gmail.com
-        - SMTP_PORT=587
-        - SMTP_USER=your-email@gmail.com
-        - SMTP_PASS=your-app-password
-     depends_on:
-       postgres:
-         condition: service_healthy
+  learning-service:
+    build:
+      context: ./backend/services/learning-service
+    ports:
+      - "3005:3005"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-   user-profile-service:
-     build:
-       context: ./services/user-profile-service
-     ports:
-       - "3002:3002"
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-     depends_on:
-       postgres:
-         condition: service_healthy
+  notification-service:
+    build:
+      context: ./backend/services/notification-service
+    ports:
+      - "3006:3006"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=your-email@gmail.com
+      - SMTP_PASS=your-app-password
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-   ai-inference-service:
-     build:
-       context: ./services/ai-inference-service
-     ports:
-       - "3006:3006"
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-       - MILVUS_HOST=milvus-standalone
-       - MILVUS_PORT=19530
-     depends_on:
-       postgres:
-         condition: service_healthy
-       milvus-standalone:
-         condition: service_healthy
+  ai-inference-service:
+    build:
+      context: ./backend/services/ai-inference-service
+    ports:
+      - "3007:3007"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+      - MILVUS_HOST=milvus-standalone
+      - MILVUS_PORT=19530
+    depends_on:
+      postgres:
+        condition: service_healthy
+      milvus-standalone:
+        condition: service_healthy
 
-   plugin-service:
-     build:
-       context: ./services/plugin-service
-     ports:
-       - "3009:3009"
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-     depends_on:
-       postgres:
-         condition: service_healthy
+  analytics-service:
+    build:
+      context: ./backend/services/analytics-service
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos_analytics
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9092
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_KEY_FILE=${GCP_KEY_FILE}
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
 
-   social-service:
-     build:
-       context: ./services/social-service
-     ports:
-       - "3010:3010"
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-     depends_on:
-       postgres:
-         condition: service_healthy
+  task-service:
+    build:
+      context: ./backend/services/task-service
+    ports:
+      - "3009:3009"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-   subscription-service:
-     build:
-       context: ./services/subscription-service
-     ports:
-       - "3011:3011"
-     environment:
-       - DB_HOST=postgres
-       - DB_PORT=5432
-       - DB_USERNAME=postgres
-       - DB_PASSWORD=password
-       - DB_NAME=lifeos
-       - JWT_SECRET=your-secret-key
-       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-     depends_on:
-       postgres:
-         condition: service_healthy
+  plugin-service:
+    build:
+      context: ./backend/services/plugin-service
+    ports:
+      - "3010:3010"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-     analytics-service:
-      build:
-        context: ./services/analytics-service
-      ports:
-        - "3007:3006"
-      environment:
-        - NODE_ENV=development
-        - DB_HOST=postgres
-        - DB_PORT=5432
-        - DB_USERNAME=postgres
-        - DB_PASSWORD=password
-        - DB_NAME=lifeos_analytics
-        - REDIS_HOST=redis
-        - REDIS_PORT=6379
-        - KAFKA_BROKER=kafka:9092
-        - GCP_PROJECT_ID=${GCP_PROJECT_ID}
-        - GCP_KEY_FILE=${GCP_KEY_FILE}
-        - JWT_SECRET=your-secret-key
-      depends_on:
-        postgres:
-          condition: service_healthy
-        redis:
-          condition: service_healthy
-        kafka:
-          condition: service_started
+  social-service:
+    build:
+      context: ./backend/services/social-service
+    ports:
+      - "3011:3011"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  subscription-service:
+    build:
+      context: ./backend/services/subscription-service
+    ports:
+      - "3012:3012"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=lifeos
+      - JWT_SECRET=your-secret-key
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
